@@ -57,6 +57,15 @@ header{display:flex;justify-content:space-between;align-items:center;padding:14p
 .btn:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .insta{text-align:center;margin-top:28px;color:var(--mist);font-size:13px}
 .insta a{color:var(--fg)}
+.promo{display:none;margin-top:8px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));color:var(--ink);font-weight:800;font-size:14px;text-align:center;padding:10px 14px;border-radius:12px;line-height:1.35}
+.promo.on{display:block}
+.extras{display:grid;gap:10px;margin-top:22px}
+.extras .btn{margin-top:0;font-size:12px}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:16px}
+.sheet[hidden]{display:none}
+.sheet .card{width:100%;max-width:520px}
+.sheet ol{margin:12px 0 0;padding-left:20px;display:grid;gap:10px;color:#d9d3cc}
+.sheet b{color:var(--fg)}
 h1.page{font-size:28px;margin:18px 0 2px;font-weight:800}
 .sub{color:var(--mist);margin:0 0 18px}
 .step{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:800;margin:0 0 14px}
@@ -114,6 +123,7 @@ textarea.bubble:focus{outline:none;border-color:var(--green)}
 
 <div class="wrap">
   <div class="demo" id="demoBanner"></div>
+  <div class="promo" id="promo" role="status"></div>
   <header>
     <button class="brand" id="brandBtn" aria-label="SBR_CUTZZ">SBR<b>_</b>CUTZZ</button>
     <div class="lang" role="group" aria-label="Langue">
@@ -125,6 +135,8 @@ textarea.bubble:focus{outline:none;border-color:var(--green)}
 </div>
 
 <script>
+// Lien d'avis Google (fiche › « Demander des avis ») et CSV publié de la feuille Google qui contient la bannière (A1 = FR, B1 = EN)
+const CONFIG={reviewUrl:"",bannerCsv:""};
 const BIZ={wa:"33761541253",waDisplay:"+33 7 61 54 12 53",addr:"340 St Kilda Road, St Kilda VIC 3182, Australia",insta:"https://instagram.com/sbr_cutzz"};
 const WA_MSG="Salut Sabri ! Je souhaiterais prendre rendez-vous pour une coupe à domicile. Peux-tu me communiquer tes disponibilités ? Merci !";
 const TZ="Australia/Melbourne";
@@ -147,7 +159,10 @@ fr:{demo:"APERÇU DE DÉMONSTRATION — aucune réservation réelle n’est enre
  again:"Faire une autre réservation",
  hTitle:"COUPE À DOMICILE",hText:"Tu souhaites te faire couper les cheveux directement chez toi ? Contacte Sabri sur WhatsApp pour convenir ensemble d’un créneau et du lieu du rendez-vous.",
  hCta:"ENVOYER UN MESSAGE WHATSAPP",hPrev:"Message qui sera envoyé à Sabri :",hEdit:"Tu peux modifier ce message avant de l’envoyer.",hReset:"Remettre le message d’origine",hHow:"WhatsApp s’ouvrira avec ton message : il te suffira d’appuyer sur « Envoyer ».",back:"Retour à l’accueil",
- loc:"fr-FR",place2:"St Kilda"},
+ loc:"fr-FR",place2:"St Kilda",
+ install:"AJOUTER À MON ÉCRAN D’ACCUEIL",review:"LAISSER UN AVIS GOOGLE",
+ iosT:"Ajouter SBR_CUTZZ à ton écran d’accueil",ios1:"Appuie sur le bouton <b>Partager</b> de Safari (carré avec une flèche vers le haut).",ios2:"Choisis <b>Sur l’écran d’accueil</b>.",ios3:"Appuie sur <b>Ajouter</b> : l’icône SBR apparaît avec tes applis.",
+ iosNot:"Ouvre d’abord ce site dans <b>Safari</b> pour pouvoir l’ajouter.",deskT:"Ajouter SBR_CUTZZ",desk1:"Dans le menu de ton navigateur, choisis <b>Installer</b> ou <b>Ajouter à l’écran d’accueil</b>.",ok:"OK"},
 en:{demo:"DEMO PREVIEW — no real booking is saved and no email is sent.",
  tag:"Your barber in St Kilda, Melbourne.",dur:"10:00 am – 10:00 pm",
  t1:"Book a cut",d1:"Book directly with Sabri in St Kilda.",c1:"SEE AVAILABILITY",
@@ -166,7 +181,10 @@ en:{demo:"DEMO PREVIEW — no real booking is saved and no email is sent.",
  again:"Make another booking",
  hTitle:"HOME VISIT",hText:"Want your haircut at home? Message Sabri on WhatsApp to agree on a time and place together.",
  hCta:"SEND A WHATSAPP MESSAGE",hPrev:"Message that will be sent to Sabri:",hEdit:"You can edit this message before sending it.",hReset:"Restore original message",hHow:"WhatsApp will open with your message: just tap “Send”.",back:"Back to home",
- loc:"en-AU",place2:"St Kilda"}
+ loc:"en-AU",place2:"St Kilda",
+ install:"ADD TO MY HOME SCREEN",review:"LEAVE A GOOGLE REVIEW",
+ iosT:"Add SBR_CUTZZ to your home screen",ios1:"Tap Safari’s <b>Share</b> button (square with an up arrow).",ios2:"Choose <b>Add to Home Screen</b>.",ios3:"Tap <b>Add</b>: the SBR icon appears with your apps.",
+ iosNot:"Open this site in <b>Safari</b> first to add it.",deskT:"Add SBR_CUTZZ",desk1:"In your browser menu, choose <b>Install</b> or <b>Add to Home screen</b>.",ok:"OK"}
 };
 let L="fr";try{L=localStorage.getItem("sbr_lang")||"fr"}catch(e){}
 const S={view:"home",month:null,date:null,time:null,form:{fn:"",ln:"",ph:"",em:"",c:false},errs:{},booked:{},done:null,waMsg:WA_MSG};
@@ -184,7 +202,7 @@ function seededTaken(d,s){let h=0;for(const c of d+s)h=(h*31+c.charCodeAt(0))>>>
 function slotState(d,s){const[h,m]=s.split(":").map(Number);if(d===melbToday()&&h*60+m<melbNowMin()+30)return false;if(S.booked[d+s])return false;return!seededTaken(d,s)}
 const TODAY=melbToday(),MAX=addDays(TODAY,60);
 
-function setLang(l){L=l;try{localStorage.setItem("sbr_lang",l)}catch(e){}document.documentElement.lang=l;
+function setLang(l){L=l;showPromo();try{localStorage.setItem("sbr_lang",l)}catch(e){}document.documentElement.lang=l;
   $("#lfr").setAttribute("aria-pressed",l==="fr");$("#len").setAttribute("aria-pressed",l==="en");render()}
 $("#lfr").onclick=()=>setLang("fr");$("#len").onclick=()=>setLang("en");
 $("#brandBtn").onclick=()=>go("home");
@@ -207,7 +225,9 @@ function render(){
       <button class="card tile in-anim" id="goBook"><div class="ico">${ICON.sc}</div><h2>${t("t1")}</h2><p>${t("d1")}</p><span class="btn gold">${t("c1")}</span></button>
       <button class="card tile in-anim" id="goHome"><div class="ico g">${ICON.home}</div><h2>${t("t2")}</h2><p>${t("d2")}</p><span class="btn outline-g">${t("c2")}</span></button>
     </div>
+    <div class="extras">${canInstall()?`<button class="btn ghost" id="install">📲 ${t("install")}</button>`:""}${CONFIG.reviewUrl?`<a class="btn ghost" href="${CONFIG.reviewUrl}" target="_blank" rel="noopener">⭐ ${t("review")}</a>`:""}</div>
     <p class="insta"><a href="${BIZ.insta}" target="_blank" rel="noopener">${t("follow")}</a></p>`;
+    if($("#install"))$("#install").onclick=doInstall;
     $("#goBook").onclick=()=>go("book");$("#goHome").onclick=()=>go("domicile");return}
   if(v==="domicile"){app.innerHTML=`
     <div class="center in-anim" style="padding-top:18px"><div class="ico g" style="margin:0 auto">${ICON.home}</div>
@@ -297,6 +317,30 @@ function gcal(d){const[h,m]=d.time.split(":").map(Number);const pad=n=>String(n)
   const st=d.date.replace(/-/g,"")+"T"+pad(h)+pad(m)+"00";const em=h*60+m+40;const en=d.date.replace(/-/g,"")+"T"+pad(Math.floor(em/60))+pad(em%60)+"00";
   const p=new URLSearchParams({action:"TEMPLATE",text:"SBR_CUTZZ (Sabri)",dates:st+"/"+en,ctz:TZ,location:BIZ.addr,details:"340 St Kilda Road, St Kilda VIC 3182 — "+d.ref});
   return "https://calendar.google.com/calendar/render?"+p}
+// Écran d'accueil : Android/Chrome propose l'installation, iPhone affiche les étapes Safari
+let installEvt=null;
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;if(S.view==="home")render()});
+const isStandalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const onSite=/(^|\.)github\.io$/.test(location.hostname);
+function canInstall(){return onSite&&!isStandalone()}
+function doInstall(){
+  if(installEvt){installEvt.prompt();installEvt.userChoice.finally(()=>{installEvt=null});return}
+  const safari=isIOS&&!/CriOS|FxiOS|EdgiOS|GSA|Instagram|FBAN|FBAV/.test(navigator.userAgent);
+  const body=isIOS?(safari?`<ol><li>${t("ios1")}</li><li>${t("ios2")}</li><li>${t("ios3")}</li></ol>`:`<p class="muted" style="font-size:15px">${t("iosNot")}</p>`):`<ol><li>${t("desk1")}</li></ol>`;
+  let sh=$("#sheet");if(!sh){sh=document.createElement("div");sh.id="sheet";sh.className="sheet";document.body.appendChild(sh);sh.onclick=e=>{if(e.target===sh)sh.hidden=true}}
+  sh.innerHTML=`<div class="card in-anim" role="dialog" aria-modal="true"><h2 style="margin:0;font-size:20px">${isIOS?t("iosT"):t("deskT")}</h2>${body}<button class="btn gold" id="sheetOk">${t("ok")}</button></div>`;
+  sh.hidden=false;$("#sheetOk").onclick=()=>sh.hidden=true}
+if(onSite&&"serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+// Bannière promo : première ligne de la feuille Google publiée en CSV
+let promo=null;
+function csvRow(txt){const out=[];let cur="",q=false;for(let i=0;i<txt.length;i++){const c=txt[i];
+  if(q){if(c==='"'&&txt[i+1]==='"'){cur+='"';i++}else if(c==='"')q=false;else cur+=c}
+  else if(c==='"')q=true;else if(c===",")(out.push(cur),cur="");else if(c==="\n"||c==="\r")break;else cur+=c}
+  out.push(cur);return out.map(x=>x.trim())}
+function showPromo(){const el=$("#promo");const txt=promo&&(L==="en"&&promo[1]?promo[1]:promo[0]);el.textContent=txt||"";el.classList.toggle("on",!!txt)}
+if(CONFIG.bannerCsv)fetch(CONFIG.bannerCsv+(CONFIG.bannerCsv.includes("?")?"&":"?")+"t="+Date.now()).then(r=>r.ok?r.text():"").then(x=>{promo=csvRow(x);showPromo()}).catch(()=>{});
 setLang(L);
 </script>
 
