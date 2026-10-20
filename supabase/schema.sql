@@ -38,6 +38,24 @@ create index if not exists bookings_day on public.bookings (day);
 alter table public.bookings add column if not exists user_id uuid references auth.users (id) on delete set null;
 create index if not exists bookings_user on public.bookings (user_id);
 
+-- Prestations et prix, modifiables depuis l'espace admin (prix vide = pas affiché)
+create table if not exists public.services (
+  id uuid primary key default gen_random_uuid(),
+  name_fr text not null check (char_length(name_fr) between 1 and 40),
+  name_en text not null default '' check (char_length(name_en) <= 40),
+  price numeric(7,2) check (price is null or price >= 0),
+  active boolean not null default true,
+  sort int not null default 0,
+  created_at timestamptz not null default now()
+);
+insert into public.services (name_fr, name_en, sort)
+select * from (values ('Coupe + barbe', 'Cut + beard', 1), ('Coupe', 'Haircut', 2), ('Barbe', 'Beard', 3)) v
+where not exists (select 1 from public.services);
+-- La prestation et le prix sont recopiés dans le rendez-vous au moment de la réservation
+alter table public.bookings add column if not exists service_id uuid references public.services (id) on delete set null;
+alter table public.bookings add column if not exists service text;
+alter table public.bookings add column if not exists price numeric(7,2);
+
 -- Créneaux bloqués par Sabri (slot vide = journée entière)
 create table if not exists public.blocks (
   id uuid primary key default gen_random_uuid(),
@@ -65,6 +83,12 @@ grant execute on function public.is_admin() to anon, authenticated;
 alter table public.settings enable row level security;
 alter table public.bookings enable row level security;
 alter table public.blocks enable row level security;
+alter table public.services enable row level security;
+
+drop policy if exists services_read on public.services;
+create policy services_read on public.services for select to anon, authenticated using (true);
+drop policy if exists services_admin on public.services;
+create policy services_admin on public.services for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists settings_read on public.settings;
 create policy settings_read on public.settings for select to anon, authenticated using (true);
@@ -87,6 +111,8 @@ revoke insert, update, delete on public.settings from anon;
 grant select on public.settings to anon, authenticated;
 grant update on public.settings to authenticated;
 grant select, insert, update, delete on public.bookings, public.blocks to authenticated;
+grant select on public.services to anon, authenticated;
+grant insert, update, delete on public.services to authenticated;
 
 -- Date et heure actuelles à Melbourne
 create or replace function public.melb_now() returns timestamp
@@ -104,9 +130,10 @@ language sql stable security definer set search_path = '' as $$
 $$;
 
 -- Réservation par un client : vérifie tout côté serveur et renvoie le numéro de réservation
+drop function if exists public.book(date, time, text, text, text, text, text);
 create or replace function public.book(
   p_day date, p_slot time, p_first_name text, p_last_name text,
-  p_phone text, p_email text default null, p_lang text default 'fr'
+  p_phone text, p_email text default null, p_lang text default 'fr', p_service uuid default null
 ) returns text
 language plpgsql volatile security definer set search_path = '' as $$
 declare
@@ -118,6 +145,7 @@ declare
   digits text := regexp_replace(coalesce(p_phone, ''), '\D', '', 'g');
   uid uuid := auth.uid();
   new_ref text;
+  sv public.services;
   alphabet text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 begin
   select * into s from public.settings where id = 1;
@@ -145,6 +173,12 @@ begin
   if exists (select 1 from public.blocks k where k.day = p_day and (k.slot is null or k.slot = p_slot)) then
     raise exception 'slot_taken' using errcode = 'P0001';
   end if;
+  if p_service is not null then
+    select * into sv from public.services where id = p_service and active;
+    if not found then
+      raise exception 'invalid_service' using errcode = 'P0001';
+    end if;
+  end if;
   -- Anti-abus : 3 rendez-vous à venir maximum par numéro de téléphone
   if (select count(*) from public.bookings b
        where regexp_replace(b.phone, '\D', '', 'g') = digits
@@ -166,9 +200,10 @@ begin
   end if;
 
   begin
-    insert into public.bookings (ref, day, slot, first_name, last_name, phone, email, lang, user_id)
+    insert into public.bookings (ref, day, slot, first_name, last_name, phone, email, lang, user_id, service_id, service, price)
     values (new_ref, p_day, p_slot, trim(p_first_name), trim(p_last_name), trim(p_phone),
-            nullif(trim(coalesce(p_email, '')), ''), case when p_lang = 'en' then 'en' else 'fr' end, uid);
+            nullif(trim(coalesce(p_email, '')), ''), case when p_lang = 'en' then 'en' else 'fr' end, uid,
+            sv.id, sv.name_fr, sv.price);
   exception when unique_violation then
     raise exception 'slot_taken' using errcode = 'P0001';
   end;
@@ -176,9 +211,9 @@ begin
 end $$;
 
 revoke all on function public.get_unavailable(date, date) from public;
-revoke all on function public.book(date, time, text, text, text, text, text) from public;
+revoke all on function public.book(date, time, text, text, text, text, text, uuid) from public;
 grant execute on function public.get_unavailable(date, date) to anon, authenticated;
-grant execute on function public.book(date, time, text, text, text, text, text) to anon, authenticated;
+grant execute on function public.book(date, time, text, text, text, text, text, uuid) to anon, authenticated;
 
 -- Notification à Sabri à chaque nouvelle réservation (ntfy ou Telegram, réglé dans private.notify)
 create table if not exists private.notify (
@@ -195,6 +230,12 @@ alter table private.notify add column if not exists sender_email text;
 alter table private.notify add column if not exists sender_name text not null default 'SBR_CUTZZ';
 alter table private.notify add column if not exists site_url text not null default 'https://sbr-cutzz.github.io/';
 
+-- Prix lisible : 35 → « $35 », 37.5 → « $37.50 »
+create or replace function private.price_text(p numeric) returns text
+language sql immutable set search_path = '' as $$
+  select case when p is null then null else '$' || regexp_replace(to_char(p, 'FM999990.00'), '\.00$', '') end
+$$;
+
 create or replace function private.notify_new_booking() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -207,6 +248,7 @@ begin
   msg := new.first_name || ' ' || left(new.last_name, 1) || '. · '
       || (array['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'])[extract(isodow from new.day)::int]
       || ' ' || to_char(new.day, 'DD/MM') || ' à ' || to_char(new.slot, 'HH24"h"MI')
+      || coalesce(' · ' || new.service || coalesce(' ' || private.price_text(new.price), ''), '')
       || ' · ' || new.ref;
   if coalesce(n.ntfy_topic, '') <> '' then
     perform net.http_post(
@@ -281,8 +323,12 @@ declare
   btn_label text;
   btn_url text;
   body text;
+  svc text := new.service;
 begin
   select * into n from private.notify where id = 1;
+  if en and new.service_id is not null then
+    select coalesce(nullif(s.name_en, ''), new.service) into svc from public.services s where s.id = new.service_id;
+  end if;
 
   if tg_op = 'INSERT' and new.status = 'confirmed' then
     kind := 'confirm';
@@ -326,6 +372,10 @@ begin
     || '<table style="font-size:15px;border-collapse:collapse;margin:12px 0">'
     || '<tr><td style="padding:4px 16px 4px 0;color:#777">' || case when en then 'When' else 'Quand' end || '</td><td style="font-weight:bold">'
     || private.when_text(new.day, new.slot, new.lang) || '</td></tr>'
+    || case when coalesce(svc, '') <> '' then
+         '<tr><td style="padding:4px 16px 4px 0;color:#777">' || case when en then 'Service' else 'Prestation' end || '</td><td style="font-weight:bold">'
+         || private.html(svc) || coalesce(' · ' || private.price_text(new.price), '') || '</td></tr>'
+       else '' end
     || '<tr><td style="padding:4px 16px 4px 0;color:#777">' || case when en then 'Where' else 'Où' end || '</td><td style="font-weight:bold">340 St Kilda Road, St Kilda VIC 3182</td></tr>'
     || '<tr><td style="padding:4px 16px 4px 0;color:#777">' || case when en then 'Booking no.' else 'N° de réservation' end || '</td><td style="font-weight:bold;font-family:monospace">' || new.ref || '</td></tr>'
     || '</table>'
@@ -356,3 +406,40 @@ end $$;
 drop trigger if exists bookings_email on public.bookings;
 create trigger bookings_email after insert or update of status on public.bookings
   for each row execute function private.email_booking();
+
+
+-- Galerie photo des coupes : dossier de photos public en lecture (5 Mo max par photo, l'admin les réduit avant l'envoi)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('gallery', 'gallery', true, 5242880, array['image/jpeg', 'image/webp', 'image/png'])
+on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+-- Seuls les admins peuvent ajouter, remplacer ou supprimer des photos
+drop policy if exists gallery_admin_insert on storage.objects;
+create policy gallery_admin_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'gallery' and public.is_admin());
+drop policy if exists gallery_admin_update on storage.objects;
+create policy gallery_admin_update on storage.objects for update to authenticated
+  using (bucket_id = 'gallery' and public.is_admin()) with check (bucket_id = 'gallery' and public.is_admin());
+drop policy if exists gallery_admin_delete on storage.objects;
+create policy gallery_admin_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'gallery' and public.is_admin());
+drop policy if exists gallery_admin_select on storage.objects;
+create policy gallery_admin_select on storage.objects for select to authenticated
+  using (bucket_id = 'gallery' and public.is_admin());
+
+-- Liste des photos affichées, dans l'ordre choisi par l'admin
+create table if not exists public.gallery (
+  id uuid primary key default gen_random_uuid(),
+  path text not null unique,
+  caption text not null default '' check (char_length(caption) <= 80),
+  sort int not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.gallery enable row level security;
+drop policy if exists gallery_read on public.gallery;
+create policy gallery_read on public.gallery for select to anon, authenticated using (true);
+drop policy if exists gallery_admin on public.gallery;
+create policy gallery_admin on public.gallery for all to authenticated using (public.is_admin()) with check (public.is_admin());
+grant select on public.gallery to anon, authenticated;
+grant insert, update, delete on public.gallery to authenticated;

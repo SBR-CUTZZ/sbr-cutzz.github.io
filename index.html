@@ -42,7 +42,7 @@ header{display:flex;justify-content:space-between;align-items:center;padding:14p
 .lang button{border:0;background:none;color:var(--mist);font:800 12px var(--body);padding:6px 12px;border-radius:999px;cursor:pointer}
 .lang button[aria-pressed="true"]{background:var(--fg);color:var(--ink)}
 .hero{text-align:center;padding:36px 0 28px}
-.hero h1{font-family:var(--display);font-weight:900;font-size:clamp(48px,15vw,72px);letter-spacing:.1em;line-height:1;margin:0;text-transform:uppercase}
+.hero h1{font-family:var(--display);font-weight:900;font-size:clamp(40px,13vw,72px);letter-spacing:.08em;line-height:1;margin:0;text-transform:uppercase}
 .hero h1 b{color:var(--gold)}
 .hero p{margin:12px 0 0;font-size:17px;color:#d9d3cc}
 .hero small{display:block;margin-top:6px;color:var(--mist);font-size:11px;letter-spacing:.18em;text-transform:uppercase}
@@ -64,6 +64,23 @@ header{display:flex;justify-content:space-between;align-items:center;padding:14p
 .btn.waze{background:#33ccff;color:var(--ink)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.gal{margin-top:28px}
+.galh{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.galh h2{font-family:var(--display);font-weight:900;font-size:24px;letter-spacing:.08em;text-transform:uppercase;margin:0}
+.galh a{color:var(--mist);font-size:13px}
+.strip{display:grid;grid-auto-flow:column;grid-auto-columns:44%;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;margin:0 -16px;padding:0 16px 6px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.gph{aspect-ratio:4/5;border-radius:18px;overflow:hidden;border:1px solid var(--line);padding:0;background:var(--graphite);scroll-snap-align:start;cursor:pointer;position:relative}
+.gph img{width:100%;height:100%;object-fit:cover;display:block}
+.gph span{position:absolute;left:0;right:0;bottom:0;padding:18px 10px 8px;font-size:12px;font-weight:700;text-align:left;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.75))}
+.lb{position:fixed;inset:0;z-index:50;background:rgba(8,7,6,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 12px calc(24px + env(safe-area-inset-bottom,0))}
+.lb img{max-width:100%;max-height:calc(100dvh - 150px);border-radius:16px;object-fit:contain;touch-action:pan-y}
+.lb p{margin:12px 0 0;color:#d9d3cc;font-weight:600;text-align:center;min-height:1.5em}
+.lb .x,.lb .pv,.lb .nx{position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--coal);color:var(--fg);font-size:22px;cursor:pointer;display:grid;place-items:center;padding:0}
+.lb .x{top:calc(10px + env(safe-area-inset-top,0));right:12px;font-size:18px}
+.lb .pv{left:12px;top:50%}.lb .nx{right:12px;top:50%}
+.lb small{color:var(--mist);margin-top:4px}
+@media (min-width:560px){.strip{grid-auto-columns:31%}}
 .insta{text-align:center;margin-top:28px;color:var(--mist);font-size:13px}
 .insta a{color:var(--fg)}
 .promo{display:none;margin-top:8px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));color:var(--ink);font-weight:800;font-size:14px;text-align:center;padding:10px 14px;border-radius:12px;line-height:1.35}
@@ -99,6 +116,18 @@ input.in:focus{border-color:var(--gold);outline:none}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hint{font-size:12px;color:var(--mist);margin-top:4px}
 .errtxt{font-size:13px;color:var(--err);margin-top:4px}
+.svc{border:0;margin:0;padding:0;display:grid;gap:8px}
+.svc legend{font-size:13px;font-weight:600;color:#d9d3cc;margin-bottom:8px;padding:0}
+.sv{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--graphite);border-radius:16px;padding:14px 16px;cursor:pointer;font-weight:700}
+.sv input{accent-color:var(--gold);width:18px;height:18px;margin:0;flex:none}
+.sv span{flex:1}
+.sv b{font-family:var(--display);font-size:22px;font-weight:900;color:var(--gold);letter-spacing:.03em}
+.sv.on{border-color:var(--gold);background:rgba(201,164,92,.08)}
+.prices{margin-top:22px}
+.prices h2{font-family:var(--display);font-weight:900;font-size:24px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 6px}
+.prices div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-weight:700}
+.prices div:first-of-type{border-top:0}
+.prices b{font-family:var(--display);font-size:24px;font-weight:900;color:var(--gold)}
 .consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#d9d3cc;cursor:pointer}
 .consent input{width:20px;height:20px;accent-color:var(--gold);flex-shrink:0;margin-top:1px}
 .sum{border:1px solid rgba(201,164,92,.35);background:rgba(201,164,92,.06);border-radius:18px;padding:16px}
@@ -161,6 +190,7 @@ fr:{demo:"APERÇU DE DÉMONSTRATION — aucune réservation réelle n’est enre
  t1:"Réserver une coupe",d1:"Prends rendez-vous directement chez Sabri à St Kilda.",c1:"VOIR LES DISPONIBILITÉS",
  t2:"Coupe à domicile",d2:"Tu préfères te faire couper les cheveux chez toi ? Contacte Sabri directement pour organiser un rendez-vous.",c2:"CONTACTER SUR WHATSAPP",
  follow:"Suivre @sbr_cutzz sur Instagram",
+ galT:"Les coupes",svT:"Prestation",svReq:"Choisis une prestation.",svPrices:"Tarifs",eSvc:"Cette prestation n’est plus proposée, choisis-en une autre.",galMore:"Plus sur Instagram",galClose:"Fermer",galPrev:"Photo précédente",galNext:"Photo suivante",
  bTitle:"Réserver une coupe",bSub:"Sur place, chez Sabri à St Kilda · 40 min",s1:"Choisis une date",s2:"Choisis un horaire",s3:"Tes coordonnées",
  live:"Les disponibilités se mettent à jour automatiquement.",noSlots:"Plus aucun créneau disponible ce jour-là.",
  fn:"Prénom",ln:"Nom",ph:"Numéro de téléphone",phH:"Ex. 0412 345 678 ou +33 6 12 34 56 78",em:"Adresse e-mail",emH:"Tu y recevras la confirmation de ton rendez-vous.",
@@ -198,6 +228,7 @@ en:{demo:"DEMO PREVIEW — no real booking is saved and no email is sent.",
  t1:"Book a cut",d1:"Book directly with Sabri in St Kilda.",c1:"SEE AVAILABILITY",
  t2:"Home visit",d2:"Prefer to get your haircut at home? Contact Sabri directly to arrange an appointment.",c2:"CONTACT ON WHATSAPP",
  follow:"Follow @sbr_cutzz on Instagram",
+ galT:"The cuts",svT:"Service",svReq:"Please choose a service.",svPrices:"Prices",eSvc:"This service is no longer offered, please pick another one.",galMore:"More on Instagram",galClose:"Close",galPrev:"Previous photo",galNext:"Next photo",
  bTitle:"Book a cut",bSub:"In person, with Sabri in St Kilda · 40 min",s1:"Pick a date",s2:"Pick a time",s3:"Your details",
  live:"Availability updates automatically.",noSlots:"No more slots available that day.",
  fn:"First name",ln:"Last name",ph:"Phone number",phH:"e.g. 0412 345 678 or +33 6 12 34 56 78",em:"Email address",emH:"Your booking confirmation will be sent there.",
@@ -273,9 +304,13 @@ function render(){
       <button class="card tile in-anim" id="goBook"><div class="ico">${ICON.sc}</div><h2>${t("t1")}</h2><p>${t("d1")}</p><span class="btn gold">${t("c1")}</span></button>
       <button class="card tile in-anim" id="goHome"><div class="ico g">${ICON.home}</div><h2>${t("t2")}</h2><p>${t("d2")}</p><span class="btn outline-g">${t("c2")}</span></button>
     </div>
+    ${SERVICES.some(x=>x.price!=null)?`<section class="card prices in-anim"><h2>${t("svPrices")}</h2>${SERVICES.map(x=>`<div><span>${esc(svName(x))}</span>${x.price!=null?`<b>${svPrice(x)}</b>`:""}</div>`).join("")}</section>`:""}
+    ${GAL.length?`<section class="gal in-anim" aria-label="${t("galT")}"><div class="galh"><h2>${t("galT")}</h2><a href="${BIZ.insta}" target="_blank" rel="noopener">${t("galMore")}</a></div>
+      <div class="strip">${GAL.map((g,i)=>`<button class="gph" data-g="${i}" aria-label="${esc(g.caption||t("galT"))}"><img src="${galSrc(g)}" alt="${esc(g.caption)}" loading="lazy" decoding="async">${g.caption?`<span>${esc(g.caption)}</span>`:""}</button>`).join("")}</div></section>`:""}
     <div class="extras">${LIVE?`<button class="btn ghost" id="myB">👤 ${t("myB")}</button>`:""}${canInstall()?`<button class="btn ghost" id="install">📲 ${t("install")}</button>`:""}${CONFIG.reviewUrl?`<a class="btn ghost" href="${CONFIG.reviewUrl}" target="_blank" rel="noopener">⭐ ${t("review")}</a>`:""}</div>
     <p class="insta"><a href="${BIZ.insta}" target="_blank" rel="noopener">${t("follow")}</a></p>`;
     if($("#install"))$("#install").onclick=doInstall;if($("#myB"))$("#myB").onclick=()=>go("account");
+    app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openLb(+b.dataset.g));
     $("#goBook").onclick=()=>go("book");$("#goHome").onclick=()=>go("domicile");return}
   if(v==="domicile"){app.innerHTML=`
     <div class="center in-anim" style="padding-top:18px"><div class="ico g" style="margin:0 auto">${ICON.home}</div>
@@ -301,6 +336,7 @@ function render(){
         <div class="rows" style="text-align:left;margin-top:12px">
           <div><span>${t("date")}</span><span>${dayLabel(d.date)}</span></div>
           <div><span>${t("time")}</span><span>${hhmm(d.time)}</span></div>
+          ${d.sv?`<div><span>${t("svT")}</span><span style="text-transform:none">${esc(svLabel(d.sv))}</span></div>`:""}
           <div><span>${t("addr")}</span><span style="text-transform:none">340 St Kilda Road<br>St Kilda VIC 3182</span></div>
           <div><span>${t("ref")}</span><span class="ref">${d.ref}</span></div>
         </div></div>
@@ -336,12 +372,13 @@ function render(){
   if(S.date&&S.time){const f=S.form,e=S.errs;
     if(SESSION&&!f.fn&&!f.ln&&!f.ph){const md=SESSION.meta||{};f.fn=md.fn||"";f.ln=md.ln||"";f.ph=md.ph||""}formHtml=`<section class="card in-anim" id="formSec"><h2 class="step"><span>3</span>${t("s3")}</h2>
     <form id="bf" class="stack" novalidate>
+      ${SERVICES.length?`<fieldset class="svc"><legend>${t("svT")}</legend>${SERVICES.map(x=>`<label class="sv${f.sv===x.id?" on":""}"><input type="radio" name="sv" value="${x.id}" ${f.sv===x.id?"checked":""}><span>${esc(svName(x))}</span>${x.price!=null?`<b>${svPrice(x)}</b>`:""}</label>`).join("")}${e.sv?`<div class="errtxt">${e.sv}</div>`:""}</fieldset>`:""}
       <div class="two"><label class="f">${t("fn")}<input class="in" id="fn" autocomplete="given-name" value="${esc(f.fn)}">${e.fn?`<div class="errtxt">${e.fn}</div>`:""}</label>
       <label class="f">${t("ln")}<input class="in" id="ln" autocomplete="family-name" value="${esc(f.ln)}">${e.ln?`<div class="errtxt">${e.ln}</div>`:""}</label></div>
       <label class="f">${t("ph")}<input class="in" id="ph" type="tel" inputmode="tel" autocomplete="tel" value="${esc(f.ph)}">${e.ph?`<div class="errtxt">${e.ph}</div>`:`<div class="hint">${t("phH")}</div>`}</label>
       <label class="f">${t("em")}<input class="in" id="em" type="email" inputmode="email" autocomplete="email" value="${esc(SESSION?SESSION.email:f.em)}" ${SESSION?"readonly":""}>${e.em?`<div class="errtxt">${e.em}</div>`:`<div class="hint">${t("emH")}</div>`}</label>
       <label class="consent"><input type="checkbox" id="c" ${f.c?"checked":""}><span>${t("consent")}</span></label>${e.c?`<div class="errtxt">${e.c}</div>`:""}
-      <div class="sum"><div class="b">SBR<b>_</b>CUTZZ</div><dl><dt>${t("date")}</dt><dd>${dayLabel(S.date)}</dd><dt>${t("time")}</dt><dd>${hhmm(S.time)}</dd><dt>${t("place")}</dt><dd>${t("place2")}</dd></dl>
+      <div class="sum"><div class="b">SBR<b>_</b>CUTZZ</div><dl><dt>${t("date")}</dt><dd>${dayLabel(S.date)}</dd><dt>${t("time")}</dt><dd>${hhmm(S.time)}</dd>${svSel()?`<dt>${t("svT")}</dt><dd id="sumSv">${svLabel(svSel())}</dd>`:`<dt hidden id="sumSvT">${t("svT")}</dt><dd hidden id="sumSv"></dd>`}<dt>${t("place")}</dt><dd>${t("place2")}</dd></dl>
       <button type="button" class="link" id="chg" style="margin-top:8px">${t("change")}</button></div>
       ${S.formErr?`<div class="alert err" role="alert">${S.formErr}</div>`:""}
       <button class="btn gold" style="margin-top:0;font-size:14px;padding:17px" ${S.sending?"disabled":""}>${S.sending?t("sending"):t("confirm")}</button>
@@ -357,6 +394,8 @@ function render(){
   const bf=$("#bf");if(bf){
     ["fn","ln","ph","em"].forEach(k=>$("#"+k).oninput=e=>S.form[k]=e.target.value);
     $("#c").onchange=e=>S.form.c=e.target.checked;
+    app.querySelectorAll("input[name=sv]").forEach(r=>r.onchange=()=>{S.form.sv=r.value;if(S.errs.sv){delete S.errs.sv;const x=app.querySelector(".svc .errtxt");if(x)x.remove()}app.querySelectorAll(".sv").forEach(l=>l.classList.toggle("on",l.contains(r)));
+      const dd=$("#sumSv"),dt=$("#sumSvT");dd.textContent=svLabel(svSel());dd.hidden=false;if(dt)dt.hidden=false});
     $("#chg").onclick=()=>$("#slotsSec").scrollIntoView({behavior:"smooth"});
     bf.onsubmit=e=>{e.preventDefault();const f=S.form,er={},nm=/^[\p{L}\p{M}' .-]+$/u;
       if(!f.fn.trim())er.fn=t("req");else if(!nm.test(f.fn.trim()))er.fn=t("req");
@@ -365,11 +404,12 @@ function render(){
       if(SESSION)f.em=SESSION.email;
       if(!f.em.trim())er.em=t("req");else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.em.trim()))er.em=t("badEm");
       if(!f.c)er.c=t("badC");
+      if(SERVICES.length&&!svSel())er.sv=t("svReq");
       S.errs=er;S.formErr="";if(Object.keys(er).length){render();return}
       if(LIVE){submitLive();return}
       S.booked[S.date+S.time]=1;
       const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="SBR-";for(let i=0;i<6;i++)r+=a[Math.floor(Math.random()*a.length)];
-      S.done={fn:f.fn.trim(),date:S.date,time:S.time,ref:r};S.form={fn:"",ln:"",ph:"",em:"",c:false};S.time=null;go("done")}}
+      S.done={fn:f.fn.trim(),date:S.date,time:S.time,ref:r,sv:svSel()};S.form={fn:"",ln:"",ph:"",em:"",c:false};S.time=null;go("done")}}
 }
 function gcal(d){const[h,m]=d.time.split(":").map(Number);const pad=n=>String(n).padStart(2,"0");
   const st=d.date.replace(/-/g,"")+"T"+pad(h)+pad(m)+"00";const em=h*60+m+SLOT_MIN;const en=d.date.replace(/-/g,"")+"T"+pad(Math.floor(em/60))+pad(em%60)+"00";
@@ -407,13 +447,14 @@ async function loadAvail(){S.availLoading=true;
     S.availOk=true}catch(e){}
   S.availLoading=false}
 async function submitLive(){const f=S.form;S.sending=true;render();
-  try{const ref=await api("rpc/book",{p_day:S.date,p_slot:S.time,p_first_name:f.fn.trim(),p_last_name:f.ln.trim(),p_phone:f.ph.trim(),p_email:f.em.trim()||null,p_lang:L});
+  try{const ref=await api("rpc/book",{p_day:S.date,p_slot:S.time,p_first_name:f.fn.trim(),p_last_name:f.ln.trim(),p_phone:f.ph.trim(),p_email:f.em.trim()||null,p_lang:L,...(LIVE&&svSel()?{p_service:svSel().id}:{})});
     S.sending=false;S.taken.add(S.date+" "+S.time);
-    S.done={fn:f.fn.trim(),date:S.date,time:S.time,ref,em:f.em.trim()};S.acct.list=null;
+    S.done={fn:f.fn.trim(),date:S.date,time:S.time,ref,em:f.em.trim(),sv:svSel()};S.acct.list=null;
     if(SESSION)saveMeta({fn:f.fn.trim(),ln:f.ln.trim(),ph:f.ph.trim()});
     S.form={fn:"",ln:"",ph:"",em:"",c:false};S.time=null;go("done")}
   catch(e){S.sending=false;const m=String(e.message||"");
-    S.formErr=/slot_taken/.test(m)?t("eTaken"):/too_late|invalid_day|invalid_slot/.test(m)?t("eLate"):/too_many/.test(m)?t("eMany"):/invalid_details/.test(m)?t("eInvalid"):t("eNet");
+    S.formErr=/slot_taken/.test(m)?t("eTaken"):/too_late|invalid_day|invalid_slot/.test(m)?t("eLate"):/too_many/.test(m)?t("eMany"):/invalid_details/.test(m)?t("eInvalid"):/invalid_service/.test(m)?t("eSvc"):t("eNet");
+    if(/invalid_service/.test(m)){S.form.sv="";loadServices()}
     if(/slot_taken|too_late|invalid_day|invalid_slot/.test(m)){S.time=null;await loadAvail()}
     render();$(S.time?"#formSec":"#slotsSec")?.scrollIntoView({behavior:"smooth",block:"start"});
     if(!S.time){const box=$("#slotsSec");if(box&&S.formErr)box.insertAdjacentHTML("afterbegin",`<div class="alert err" role="alert" style="margin-bottom:14px">${S.formErr}</div>`);S.formErr=""}}}
@@ -456,7 +497,7 @@ async function verifyCode(){const A=S.acct,code=A.code.replace(/\D/g,"");A.err="
   catch(e){A.err=e.status>=400&&e.status<500?t("aBadCode"):t("eNet")}
   A.busy=false;render()}
 async function loadMine(){const A=S.acct;A.busy=true;
-  try{A.list=await api("bookings?select=id,ref,day,slot,status,first_name&order=day.desc,slot.desc&limit=30")}catch(e){A.list=null;A.err=t("eNet")}
+  try{A.list=await api("bookings?select=id,ref,day,slot,status,first_name"+(SVC_DB?",service":"")+"&order=day.desc,slot.desc&limit=30")}catch(e){A.list=null;A.err=t("eNet")}
   A.busy=false;if(S.view==="account")render()}
 function canCancel(b){const[y,m,d]=b.day.split("-").map(Number),[ty,tm,td]=melbToday().split("-").map(Number);
   const days=(Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/864e5,[h,mi]=b.slot.split(":").map(Number);
@@ -476,7 +517,7 @@ function renderAccount(app){const A=S.acct;
         <button class="btn gold" style="margin-top:0" ${A.busy?"disabled":""}>${A.busy?t("sending"):t("aLogin")}</button>
         <div style="display:flex;justify-content:space-between;gap:12px"><button type="button" class="link" id="aother">${t("aOther")}</button><button type="button" class="link" id="aresend" ${otpLeft(A.email.trim())?"disabled":""}>${otpLeft(A.email.trim())?t("aResendIn").replace("{s}",mmss(otpLeft(A.email.trim()))):t("aResend")}</button></div></form>`}
   else{const list=A.list||[],up=list.filter(b=>b.status==="confirmed"&&b.day>=melbToday()).reverse(),past=list.filter(b=>!up.includes(b)).slice(0,10);
-    const row=(b,act)=>`<div class="bk"><span><b>${dayLabel(b.day)} · ${hhmm(b.slot.slice(0,5))}</b><span class="muted"><span class="ref">${b.ref}</span> · ${t("st_"+b.status)}</span></span>
+    const row=(b,act)=>`<div class="bk"><span><b>${dayLabel(b.day)} · ${hhmm(b.slot.slice(0,5))}</b><span class="muted"><span class="ref">${b.ref}</span>${b.service?" · "+esc(b.service):""} · ${t("st_"+b.status)}</span></span>
       ${act?(canCancel(b)?`<button class="btn red" data-c="${b.id}" data-d="${b.day}" data-t="${b.slot.slice(0,5)}">${t("aCancel")}</button>`:`<a class="btn ghost" target="_blank" rel="noopener" href="${waUrl(t("waChangeMsg").replace("{n}",b.first_name).replace("{d}",dayLabel(b.day)).replace("{t}",hhmm(b.slot.slice(0,5))).replace("{r}",b.ref))}">WhatsApp</a>`):""}</div>`;
     body=`<p class="muted" style="margin:-8px 0 0">${esc(t("aHi").replace("{e}",SESSION.email))}</p>
       ${A.msg?`<div class="okbox">${esc(A.msg)}</div>`:""}${A.err?`<div class="alert err" role="alert">${A.err}</div>`:""}
@@ -509,6 +550,33 @@ if(LIVE&&/^#(compte|account)$/.test(location.hash))S.view="account";
 
 // Les créneaux pris par d'autres clients se mettent à jour toutes les minutes
 setInterval(()=>{if(LIVE&&S.view==="book"&&!S.sending)loadAvail().then(()=>{const a=document.activeElement;if(S.view==="book"&&!(a&&/INPUT|TEXTAREA/.test(a.tagName)))render()})},60000);
+
+// Prestations et prix : réglés depuis l'espace admin (exemple sans prix en démo)
+let SVC_DB=false,SERVICES=LIVE?[]:[{id:"d1",name_fr:"Coupe + barbe",name_en:"Cut + beard",price:null},{id:"d2",name_fr:"Coupe",name_en:"Haircut",price:null},{id:"d3",name_fr:"Barbe",name_en:"Beard",price:null}];
+const svName=x=>L==="en"&&x.name_en?x.name_en:x.name_fr;
+const svPrice=x=>x.price==null?"":"$"+(Number(x.price)%1?Number(x.price).toFixed(2):Number(x.price));
+const svLabel=x=>x?svName(x)+(x.price!=null?" · "+svPrice(x):""):"";
+const svSel=()=>SERVICES.find(x=>x.id===S.form.sv)||null;
+function loadServices(){return api("services?select=id,name_fr,name_en,price&active=eq.true&order=sort.asc,created_at.asc").then(r=>{SVC_DB=true;SERVICES=r||[];
+  const a=document.activeElement;if((S.view==="home"||S.view==="book")&&!(a&&/INPUT|TEXTAREA/.test(a.tagName)))render()}).catch(()=>{})}
+if(LIVE)loadServices();
+
+// Galerie photo : ajoutée par Sabri depuis l'espace admin
+let GAL=[];
+const galSrc=g=>CONFIG.supabaseUrl.replace(/\/$/,"")+"/storage/v1/object/public/gallery/"+g.path;
+function openLb(i){let el=$("#lb");if(!el){el=document.createElement("div");el.id="lb";el.className="lb";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");document.body.appendChild(el)}
+  const g=GAL[i],n=GAL.length;el.hidden=false;document.body.style.overflow="hidden";
+  el.innerHTML=`<button class="x" aria-label="${t("galClose")}">✕</button>${n>1?`<button class="pv" aria-label="${t("galPrev")}">‹</button><button class="nx" aria-label="${t("galNext")}">›</button>`:""}
+    <img src="${galSrc(g)}" alt="${esc(g.caption)}"><p>${esc(g.caption)}</p>${n>1?`<small>${i+1} / ${n}</small>`:""}`;
+  const close=()=>{el.hidden=true;el.innerHTML="";document.body.style.overflow="";document.removeEventListener("keydown",key);const b=document.querySelector(`[data-g="${i}"]`);if(b)b.focus()};
+  const step=d=>{document.removeEventListener("keydown",key);openLb((i+d+n)%n)};
+  const key=e=>{if(e.key==="Escape")close();else if(e.key==="ArrowRight"&&n>1)step(1);else if(e.key==="ArrowLeft"&&n>1)step(-1)};
+  document.removeEventListener("keydown",openLb._k||(()=>{}));openLb._k=key;document.addEventListener("keydown",key);
+  el.querySelector(".x").onclick=close;el.onclick=e=>{if(e.target===el)close()};
+  if(n>1){el.querySelector(".pv").onclick=()=>step(-1);el.querySelector(".nx").onclick=()=>step(1);
+    let x0=null;const im=el.querySelector("img");im.ontouchstart=e=>{x0=e.touches[0].clientX};im.ontouchend=e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>50)step(dx<0?1:-1)}}
+  el.querySelector(".x").focus()}
+if(LIVE)api("gallery?select=id,path,caption&order=sort.asc,created_at.desc").then(r=>{GAL=r||[];if(S.view==="home"&&GAL.length)render()}).catch(()=>{});
 
 // Bannière promo et horaires : réglés depuis l'espace admin
 let promo=null;

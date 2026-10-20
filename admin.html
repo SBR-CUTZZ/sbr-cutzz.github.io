@@ -56,6 +56,8 @@ svg{width:18px;height:18px;flex:none}
 
 /* Chiffres clés */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stats.five{grid-template-columns:repeat(5,1fr)}
+@media (max-width:700px){.stats.five{grid-template-columns:repeat(4,1fr)}.stats.five .money{grid-column:1/-1;display:flex;align-items:baseline;gap:10px}}
 .stat{background:var(--coal);border:1px solid var(--line);border-radius:16px;padding:10px 12px}
 .stat b{display:block;font-family:var(--display);font-size:30px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
 .stat span{font-size:11px;color:var(--mist);line-height:1.2;display:block;margin-top:4px}
@@ -126,6 +128,26 @@ svg{width:18px;height:18px;flex:none}
 .blk{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .blk:first-child{border-top:0}
 .preview{margin-top:10px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));color:var(--ink);font-weight:800;font-size:14px;text-align:center;padding:10px 14px;border-radius:12px}
+
+/* Prestations et galerie */
+.svrow{display:grid;grid-template-columns:1fr 1fr 92px;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.svrow:first-child{border-top:0;padding-top:0}
+.svrow input{margin-top:4px;padding:10px}
+.svrow label{font-size:12px}
+.svrow .ra{grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.svrow .ra label{display:flex;align-items:center;gap:6px;font-size:13px;margin-right:auto}
+.svrow .ra input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--gold)}
+.svrow.off{opacity:.6}
+@media (max-width:520px){.svrow{grid-template-columns:1fr 92px}.svrow>label:first-child{grid-column:1/-1}}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.gi{background:var(--graphite);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.gi img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:#000}
+.gi input{margin:6px;width:auto;padding:8px;font-size:14px}
+.gi .ga{display:flex;gap:4px;padding:0 6px 6px}
+.gi .ga .btn{flex:1;padding:7px 0}
+.upl{position:relative;overflow:hidden}
+.upl input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0}
+.stat.money b{color:var(--green)}
 
 /* Fiche (fenêtre) */
 dialog{border:1px solid var(--line);background:var(--coal);color:var(--fg);border-radius:22px;padding:20px;width:min(460px,calc(100vw - 24px));max-height:calc(100dvh - 40px);overflow:auto}
@@ -247,6 +269,18 @@ dialog h2{display:flex;justify-content:space-between;align-items:center;gap:10px
         </div>
       </section>
       <section class="card stack">
+        <h2 style="margin:0">Prestations et prix</h2>
+        <p class="muted" style="margin:0">Les clients choisissent parmi les prestations actives avant de valider. Prix en dollars ; laisse vide pour ne pas l’afficher.</p>
+        <div id="svcs"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn ghost" id="svAdd">+ Ajouter une prestation</button><span class="ok" id="svMsg" role="status"></span></div>
+      </section>
+      <section class="card stack">
+        <h2 style="margin:0">Galerie photo</h2>
+        <p class="muted" style="margin:0">Les photos apparaissent sur la page d’accueil du site, dans cet ordre. Elles sont réduites automatiquement avant l’envoi.</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="btn gold upl">+ AJOUTER DES PHOTOS<input type="file" id="gFile" accept="image/*" multiple aria-label="Ajouter des photos"></span><span class="muted" id="gMsg" role="status"></span></div>
+        <div class="gal" id="gal"></div>
+      </section>
+      <section class="card stack">
         <h2 style="margin:0">Créneaux et journées bloqués</h2>
         <p class="muted" style="margin:0">Pour bloquer, touche un jour dans le calendrier puis « Bloquer la journée » ou « Bloquer » sur un créneau.</p>
         <div id="blocks"></div>
@@ -267,7 +301,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
 const BASE=CONFIG.supabaseUrl.replace(/\/$/,"");
-let showPast=false,session=null,tab="up",view="cal",rows=[],settings=null,blocks=[],month=null,sel=null,range="";
+let services=null,gallery=null,showPast=false,session=null,tab="up",view="cal",rows=[],settings=null,blocks=[],month=null,sel=null,range="";
 
 // Dates en heure de Melbourne, au format AAAA-MM-JJ
 function today(){return new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
@@ -323,9 +357,11 @@ async function loadAll(){
     api("settings?select=*&id=eq.1").then(r=>r[0]),
     api(`blocks?select=*&day=gte.${from}&order=day.asc,slot.asc.nullsfirst`)]);
   range=from+"|"+to;
+  // Prestations et galerie : null tant que la mise à jour SQL n'a pas été lancée
+  [services,gallery]=await Promise.all([api("services?select=*&order=sort.asc,created_at.asc").catch(()=>null),api("gallery?select=*&order=sort.asc,created_at.desc").catch(()=>null)]);
   renderAll();
   if(document.activeElement!==$("#bfr")&&document.activeElement!==$("#ben")){$("#bfr").value=settings.banner_fr||"";$("#ben").value=settings.banner_en||"";preview()}}
-function renderAll(){renderStats();renderCal();renderDay();renderList();renderBlocks()}
+function renderAll(){renderStats();renderCal();renderDay();renderList();renderBlocks();renderServices();renderGallery()}
 function inRange(d){const[f,t]=range.split("|");return d>=f&&d<=t}
 
 // Grille des créneaux du jour d'après les réglages (ouverture, fermeture, durée)
@@ -340,7 +376,11 @@ function renderStats(){const t=today(),wk=addDays(t,6),m=t.slice(0,7);
     ["7 prochains jours",live.filter(r=>r.day>=t&&r.day<=wk&&r.status==="confirmed").length],
     ["Ce mois-ci",live.filter(r=>r.day.startsWith(m)&&r.status!=="no_show").length],
     ["Annulés ce mois",rows.filter(r=>r.day.startsWith(m)&&r.status==="cancelled").length]];
-  $("#stats").innerHTML=n.map(([l,v])=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("")}
+  const priced=rows.filter(r=>r.day.startsWith(m)&&r.price!=null&&(r.status==="done"||r.status==="confirmed"));
+  $("#stats").classList.toggle("five",priced.length>0);
+  $("#stats").innerHTML=n.map(([l,v])=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("")+
+    (priced.length?`<div class="stat money"><b>${money(priced.reduce((a,r)=>a+Number(r.price),0))}</b><span>Chiffre prévu ce mois (faits + à venir)</span></div>`:"")}
+const money=v=>"$"+(Number(v)%1?Number(v).toFixed(2):Number(v));
 
 // ---------- Calendrier du mois ----------
 function renderCal(){
@@ -392,7 +432,7 @@ function renderDay(){
   const canc=all.filter(r=>r.status==="cancelled");
   $("#dExtra").innerHTML=canc.length?`<h3>Annulés ce jour-là</h3><div class="timeline">${canc.map(r=>`<div class="slot"><span class="t">${hm(r.slot)}</span>${bkBox(r)}</div>`).join("")}</div>`:"";
   wireDay()}
-function bkBox(r){return`<button class="box bk ${r.status}" data-bk="${r.id}"><span><span class="who">${esc(r.first_name)} ${esc(r.last_name)}</span><br><span class="sub">${esc(r.phone)}${r.user_id?" · compte client":""}</span></span><span class="pill ${r.status}">${STATUS[r.status]}</span></button>`}
+function bkBox(r){return`<button class="box bk ${r.status}" data-bk="${r.id}"><span><span class="who">${esc(r.first_name)} ${esc(r.last_name)}</span><br><span class="sub">${r.service?esc(r.service)+(r.price!=null?" "+money(r.price):"")+" · ":""}${esc(r.phone)}${r.user_id?" · compte client":""}</span></span><span class="pill ${r.status}">${STATUS[r.status]}</span></button>`}
 function wireDay(){
   const root=$("#vCal");
   root.querySelectorAll("[data-bk]").forEach(b=>b.onclick=()=>openBooking(b.dataset.bk));
@@ -419,6 +459,7 @@ function openBooking(id){
   openSheet(`<h2><span>${esc(r.first_name)} ${esc(r.last_name)}</span>${closeBtn}</h2>
     <dl class="kv">
       <dt>Quand</dt><dd style="text-transform:capitalize">${dayLabel(r.day)} · ${hm(r.slot)}</dd>
+      ${r.service?`<dt>Prestation</dt><dd>${esc(r.service)}${r.price!=null?" · "+money(r.price):""}</dd>`:""}
       <dt>Statut</dt><dd><span class="pill ${r.status}">${STATUS[r.status]}</span></dd>
       <dt>Téléphone</dt><dd><a href="tel:${esc(r.phone.replace(/[^\d+]/g,""))}">${esc(r.phone)}</a></dd>
       <dt>E-mail</dt><dd>${r.email?`<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:"<span class='muted'>non donné</span>"}</dd>
@@ -458,6 +499,7 @@ function openAdd(d,s){
         <label>Jour<input type="date" id="aDay" value="${d}" min="${today()}" required></label>
         <label>Heure<select id="aSlot" required>${opts.map(x=>`<option value="${x}"${x===s?" selected":""}>${hm(x)}</option>`).join("")||"<option value=''>Complet</option>"}</select></label>
       </div>
+      ${activeSv().length?`<label>Prestation<select id="aSv">${activeSv().map(x=>`<option value="${x.id}">${esc(x.name_fr)}${x.price!=null?" · "+money(x.price):""}</option>`).join("")}</select></label>`:""}
       <div class="row">
         <label>Prénom<input id="aFn" maxlength="60" required autocomplete="off"></label>
         <label>Nom<input id="aLn" maxlength="60" required autocomplete="off"></label>
@@ -472,6 +514,7 @@ function openAdd(d,s){
     if(!inRange(v))$("#aErr").textContent="Ce jour est loin : vérifie qu’il est bien libre, la base refusera un doublon."};
   $("#addForm").onsubmit=async e=>{e.preventDefault();const err=$("#aErr");err.textContent="";
     const body={ref:newRef(),day:$("#aDay").value,slot:$("#aSlot").value,first_name:$("#aFn").value.trim(),last_name:$("#aLn").value.trim(),phone:$("#aPh").value.trim(),email:$("#aEm").value.trim()||null,lang:"fr"};
+    const sv=$("#aSv")&&services.find(x=>x.id===$("#aSv").value);if(sv)Object.assign(body,{service_id:sv.id,service:sv.name_fr,price:sv.price});
     if(!body.slot){err.textContent="Plus aucun créneau libre ce jour-là.";return}
     if(!body.first_name||!body.last_name){err.textContent="Prénom et nom obligatoires.";return}
     if(body.phone.replace(/\D/g,"").length<8){err.textContent="Numéro de téléphone incomplet.";return}
@@ -513,6 +556,62 @@ $("#tPast").onclick=()=>{tab="past";$("#tPast").setAttribute("aria-pressed",true
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;
   document.querySelectorAll("[data-view]").forEach(x=>x.setAttribute("aria-pressed",x===b));
   $("#vCal").hidden=view!=="cal";$("#vList").hidden=view!=="list";$("#vSet").hidden=view!=="set";store.set("sbr_admin_view",view)});
+
+// ---------- Prestations ----------
+const activeSv=()=>(services||[]).filter(x=>x.active);
+const SQL_TODO=`<p class="err" style="margin:0">Il faut d’abord relancer la mise à jour SQL dans Supabase (fichier schema.sql).</p>`;
+function renderServices(){const box=$("#svcs");if(services===null){box.innerHTML=SQL_TODO;$("#svAdd").hidden=true;return}$("#svAdd").hidden=false;
+  if(box.contains(document.activeElement))return;
+  box.innerHTML=services.length?services.map((x,i)=>`<div class="svrow${x.active?"":" off"}" data-sv="${x.id}">
+    <label>Nom (français)<input data-f="name_fr" maxlength="40" value="${esc(x.name_fr)}"></label>
+    <label>Nom (anglais)<input data-f="name_en" maxlength="40" value="${esc(x.name_en)}"></label>
+    <label>Prix $<input data-f="price" type="number" inputmode="decimal" min="0" step="0.5" value="${x.price??""}" placeholder="—"></label>
+    <div class="ra"><label><input type="checkbox" data-f="active" ${x.active?"checked":""}>Proposée aux clients</label>
+      <button class="btn small ghost icon" data-mv="-1" ${i?"":"disabled"} aria-label="Monter">↑</button><button class="btn small ghost icon" data-mv="1" ${i<services.length-1?"":"disabled"} aria-label="Descendre">↓</button>
+      <button class="btn small gold" data-save>Enregistrer</button><button class="btn small red" data-del>Supprimer</button></div></div>`).join(""):`<p class="muted" style="margin:0">Aucune prestation : le choix n’apparaît pas sur le site.</p>`;
+  box.querySelectorAll(".svrow").forEach(row=>{const id=row.dataset.sv,x=services.find(s=>s.id===id),val=f=>row.querySelector(`[data-f="${f}"]`);
+    row.querySelector("[data-save]").onclick=async e=>{const b=e.target,name=val("name_fr").value.trim(),pr=val("price").value.trim();
+      if(!name){alert("Donne un nom à la prestation.");return}
+      if(pr&&!(Number(pr)>=0)){alert("Prix invalide.");return}
+      b.disabled=true;try{await api(`services?id=eq.${id}`,{method:"PATCH",body:{name_fr:name,name_en:val("name_en").value.trim(),price:pr===""?null:Number(pr),active:val("active").checked}});toast("Prestation enregistrée ✓");document.activeElement.blur();await loadAll()}
+      catch(err){b.disabled=false;alert("Impossible : "+err.message)}};
+    val("active").onchange=()=>row.querySelector("[data-save]").click();
+    row.querySelector("[data-del]").onclick=async e=>{if(!confirm(`Supprimer « ${x.name_fr} » ? Les rendez-vous déjà pris gardent leur prestation.`))return;e.target.disabled=true;
+      try{await api(`services?id=eq.${id}`,{method:"DELETE"});toast("Supprimée");await loadAll()}catch(err){e.target.disabled=false;alert("Impossible : "+err.message)}};
+    row.querySelectorAll("[data-mv]").forEach(b=>b.onclick=async()=>{const i=services.indexOf(x),j=i+ +b.dataset.mv,y=services[j];if(!y)return;
+      try{await Promise.all(services.map((s,k)=>{const want=k===i?j:k===j?i:k;return s.sort===want?null:api(`services?id=eq.${s.id}`,{method:"PATCH",body:{sort:want}})}));await loadAll()}catch(err){alert("Impossible : "+err.message)}})})}
+$("#svAdd").onclick=async()=>{try{await api("services",{method:"POST",body:{name_fr:"Nouvelle prestation",name_en:"",price:null,active:false,sort:(services||[]).length}});
+  $("#svMsg").textContent="Ajoutée : renomme-la, mets son prix, coche « Proposée » puis Enregistrer.";await loadAll()}catch(e){alert("Impossible : "+e.message)}};
+
+// ---------- Galerie ----------
+const galUrl=g=>`${BASE}/storage/v1/object/public/gallery/${g.path}`;
+async function storage(method,path,blob){await ensureSession();
+  const r=await fetch(`${BASE}/storage/v1/object/gallery/${path}`,{method,headers:{apikey:CONFIG.supabaseKey,Authorization:"Bearer "+session.token,...(blob?{"Content-Type":blob.type,"x-upsert":"false"}:{})},body:blob});
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.message||j.error||"http_"+r.status)}}
+// Réduit la photo (1600 px max, JPEG) pour qu'elle charge vite sur le site
+async function shrink(file){const img=await createImageBitmap(file,{imageOrientation:"from-image"}).catch(()=>null);
+  if(!img){if(file.size>5e6)throw new Error("photo trop lourde");return file}
+  const k=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height);return await new Promise(res=>c.toBlob(res,"image/jpeg",.85))}
+function renderGallery(){const box=$("#gal");if(gallery===null){box.innerHTML=SQL_TODO;$("#gFile").disabled=true;return}$("#gFile").disabled=false;
+  if(box.contains(document.activeElement))return;
+  box.innerHTML=gallery.length?gallery.map((g,i)=>`<div class="gi" data-g="${g.id}"><img src="${galUrl(g)}" alt="" loading="lazy">
+    <input maxlength="80" placeholder="Légende (facultatif)" value="${esc(g.caption)}" aria-label="Légende">
+    <div class="ga"><button class="btn small ghost" data-mv="-1" ${i?"":"disabled"} aria-label="Avant">←</button><button class="btn small ghost" data-mv="1" ${i<gallery.length-1?"":"disabled"} aria-label="Après">→</button><button class="btn small red" data-del aria-label="Supprimer">✕</button></div></div>`).join(""):`<p class="muted" style="margin:0;grid-column:1/-1">Aucune photo pour l’instant : la galerie est cachée sur le site.</p>`;
+  box.querySelectorAll(".gi").forEach(el=>{const g=gallery.find(x=>x.id===el.dataset.g),inp=el.querySelector("input");
+    inp.onchange=async()=>{try{await api(`gallery?id=eq.${g.id}`,{method:"PATCH",body:{caption:inp.value.trim()}});g.caption=inp.value.trim();toast("Légende enregistrée ✓")}catch(e){alert("Impossible : "+e.message)}};
+    inp.onkeydown=e=>{if(e.key==="Enter")inp.blur()};
+    el.querySelector("[data-del]").onclick=async e=>{if(!confirm("Supprimer cette photo du site ?"))return;e.target.disabled=true;
+      try{await api(`gallery?id=eq.${g.id}`,{method:"DELETE"});await storage("DELETE",g.path).catch(()=>{});toast("Photo supprimée");await loadAll()}catch(err){e.target.disabled=false;alert("Impossible : "+err.message)}};
+    el.querySelectorAll("[data-mv]").forEach(b=>b.onclick=async()=>{const i=gallery.indexOf(g),j=i+ +b.dataset.mv;if(!gallery[j])return;
+      const order=[...gallery];[order[i],order[j]]=[order[j],order[i]];
+      try{await Promise.all(order.map((x,k)=>x.sort===k?null:api(`gallery?id=eq.${x.id}`,{method:"PATCH",body:{sort:k}})));await loadAll()}catch(err){alert("Impossible : "+err.message)}})})}
+$("#gFile").onchange=async e=>{const files=[...e.target.files];e.target.value="";if(!files.length)return;let ok=0,min=Math.min(0,...(gallery||[]).map(g=>g.sort));
+  for(const f of files){$("#gMsg").textContent=`Envoi ${ok+1}/${files.length}…`;
+    try{const blob=await shrink(f),path=`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}.jpg`;
+      await storage("POST",path,blob.type?blob:new Blob([blob],{type:"image/jpeg"}));await api("gallery",{method:"POST",body:{path,caption:"",sort:--min}});ok++}
+    catch(err){alert(`Impossible d’envoyer ${f.name} : ${err.message}`)}}
+  $("#gMsg").textContent=ok?`${ok} photo${ok>1?"s":""} ajoutée${ok>1?"s":""} ✓`:"";await loadAll()};
 
 // ---------- Réglages ----------
 function preview(){const v=$("#bfr").value.trim();$("#bprev").textContent=v;$("#bprev").hidden=!v}
