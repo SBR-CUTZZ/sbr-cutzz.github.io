@@ -223,7 +223,7 @@ function renderList(){const t=today();
   $("#list").innerHTML=html||`<p class="muted" style="margin:14px 0 0">${tab==="up"?"Aucun rendez-vous à venir.":"Aucun rendez-vous ces 30 derniers jours."}</p>`;
   $("#listInfo").textContent=tab==="up"?"Mis à jour automatiquement toutes les minutes.":"30 derniers jours.";
   $("#list").querySelectorAll("button[data-id]").forEach(b=>b.onclick=async()=>{
-    const s=b.dataset.s;if(s==="cancelled"&&!confirm("Annuler ce rendez-vous ? Le créneau redeviendra libre sur le site."))return;
+    const s=b.dataset.s;if(s==="cancelled"&&!confirm("Annuler ce rendez-vous ? Le créneau redeviendra libre sur le site et le client sera prévenu par e-mail s'il en a donné un."))return;
     b.disabled=true;
     try{await api(`bookings?id=eq.${b.dataset.id}`,{method:"PATCH",body:{status:s}});await loadAll()}
     catch(e){b.disabled=false;alert(/duplicate|unique/i.test(e.message)?"Ce créneau a été repris par un autre client entre-temps.":"Impossible : "+e.message)}})}
