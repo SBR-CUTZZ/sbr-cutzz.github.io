@@ -162,7 +162,7 @@ fr:{demo:"APERÇU DE DÉMONSTRATION — aucune réservation réelle n’est enre
  follow:"Suivre @sbr_cutzz sur Instagram",
  bTitle:"Réserver une coupe",bSub:"Sur place, chez Sabri à St Kilda · 40 min",s1:"Choisis une date",s2:"Choisis un horaire",s3:"Tes coordonnées",
  live:"Les disponibilités se mettent à jour automatiquement.",noSlots:"Plus aucun créneau disponible ce jour-là.",
- fn:"Prénom",ln:"Nom",ph:"Numéro de téléphone",phH:"Ex. 0412 345 678 ou +33 6 12 34 56 78",em:"Adresse e-mail (facultatif)",emH:"Pour recevoir la confirmation par e-mail.",
+ fn:"Prénom",ln:"Nom",ph:"Numéro de téléphone",phH:"Ex. 0412 345 678 ou +33 6 12 34 56 78",em:"Adresse e-mail",emH:"Tu y recevras la confirmation de ton rendez-vous.",
  acct:"Mon compte",myB:"MES RENDEZ-VOUS",aSub:"Retrouve et gère tes rendez-vous. Pas de mot de passe : on t’envoie un code par e-mail.",
  aEmail:"Ton adresse e-mail",aSend:"RECEVOIR MON CODE",aCode:"Code reçu par e-mail",aCodeH:"Regarde aussi dans tes spams. Le code est valable 1 heure.",
  aSentTo:"Code envoyé à {e}.",aLogin:"SE CONNECTER",aOther:"Changer d’adresse",aResend:"Renvoyer le code",
@@ -199,7 +199,7 @@ en:{demo:"DEMO PREVIEW — no real booking is saved and no email is sent.",
  follow:"Follow @sbr_cutzz on Instagram",
  bTitle:"Book a cut",bSub:"In person, with Sabri in St Kilda · 40 min",s1:"Pick a date",s2:"Pick a time",s3:"Your details",
  live:"Availability updates automatically.",noSlots:"No more slots available that day.",
- fn:"First name",ln:"Last name",ph:"Phone number",phH:"e.g. 0412 345 678 or +33 6 12 34 56 78",em:"Email (optional)",emH:"To get your confirmation by email.",
+ fn:"First name",ln:"Last name",ph:"Phone number",phH:"e.g. 0412 345 678 or +33 6 12 34 56 78",em:"Email address",emH:"Your booking confirmation will be sent there.",
  acct:"My account",myB:"MY BOOKINGS",aSub:"Find and manage your bookings. No password: we email you a code.",
  aEmail:"Your email address",aSend:"SEND MY CODE",aCode:"Code from the email",aCodeH:"Check your spam folder too. The code is valid for 1 hour.",
  aSentTo:"Code sent to {e}.",aLogin:"SIGN IN",aOther:"Use another email",aResend:"Send the code again",
@@ -362,7 +362,7 @@ function render(){
       if(!f.ln.trim())er.ln=t("req");else if(!nm.test(f.ln.trim()))er.ln=t("req");
       const digits=f.ph.replace(/\D/g,"");if(!f.ph.trim())er.ph=t("req");else if(!/^\+?[\d\s().-]+$/.test(f.ph.trim())||digits.length<8||digits.length>15)er.ph=t("badPh");
       if(SESSION)f.em=SESSION.email;
-      if(f.em.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.em.trim()))er.em=t("badEm");
+      if(!f.em.trim())er.em=t("req");else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.em.trim()))er.em=t("badEm");
       if(!f.c)er.c=t("badC");
       S.errs=er;S.formErr="";if(Object.keys(er).length){render();return}
       if(LIVE){submitLive();return}
