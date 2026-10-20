@@ -125,6 +125,7 @@ textarea.bubble:focus{outline:none;border-color:var(--green)}
 .center{text-align:center}
 .muted{color:var(--mist);font-size:13px}
 .link{background:none;border:0;color:var(--gold);font:600 13px var(--body);cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:0}
+.link:disabled{color:var(--mist);text-decoration:none;cursor:default}
 @keyframes up{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
 .in-anim{animation:up .35s ease-out both}
 @media (prefers-reduced-motion:reduce){.in-anim{animation:none}*{transition:none!important}}
@@ -166,7 +167,7 @@ fr:{demo:"APERÇU DE DÉMONSTRATION — aucune réservation réelle n’est enre
  acct:"Mon compte",myB:"MES RENDEZ-VOUS",aSub:"Retrouve et gère tes rendez-vous. Pas de mot de passe : on t’envoie un code par e-mail.",
  aEmail:"Ton adresse e-mail",aSend:"RECEVOIR MON CODE",aCode:"Code reçu par e-mail",aCodeH:"Regarde aussi dans tes spams. Le code est valable 1 heure.",
  aSentTo:"Code envoyé à {e}.",aLogin:"SE CONNECTER",aOther:"Changer d’adresse",aResend:"Renvoyer le code",
- aBadCode:"Code incorrect ou expiré.",aWait:"Attends une minute avant de redemander un code.",
+ aBadCode:"Code incorrect ou expiré.",aWait:"Attends {s} avant de redemander un code.",aResendIn:"Renvoyer le code dans {s}",
  aHi:"Connecté avec {e}",aUp:"À venir",aPast:"Passés",aNone:"Aucun rendez-vous à venir.",aBook:"RÉSERVER UNE COUPE",aOut:"Se déconnecter",
  aCancel:"ANNULER",aCancelQ:"Annuler ton rendez-vous du {d} à {t} ? Le créneau sera libéré.",aCancelled:"Ton rendez-vous est annulé. Sabri est prévenu.",
  aLate:"Moins de 2 h avant : préviens Sabri sur WhatsApp.",aLateErr:"Trop tard pour annuler en ligne : préviens Sabri sur WhatsApp.",
@@ -203,7 +204,7 @@ en:{demo:"DEMO PREVIEW — no real booking is saved and no email is sent.",
  acct:"My account",myB:"MY BOOKINGS",aSub:"Find and manage your bookings. No password: we email you a code.",
  aEmail:"Your email address",aSend:"SEND MY CODE",aCode:"Code from the email",aCodeH:"Check your spam folder too. The code is valid for 1 hour.",
  aSentTo:"Code sent to {e}.",aLogin:"SIGN IN",aOther:"Use another email",aResend:"Send the code again",
- aBadCode:"Wrong or expired code.",aWait:"Please wait a minute before asking for a new code.",
+ aBadCode:"Wrong or expired code.",aWait:"Please wait {s} before asking for a new code.",aResendIn:"Send again in {s}",
  aHi:"Signed in as {e}",aUp:"Upcoming",aPast:"Past",aNone:"No upcoming bookings.",aBook:"BOOK A CUT",aOut:"Sign out",
  aCancel:"CANCEL",aCancelQ:"Cancel your booking on {d} at {t}? The slot will be released.",aCancelled:"Your booking is cancelled. Sabri has been notified.",
  aLate:"Less than 2 h to go: message Sabri on WhatsApp.",aLateErr:"Too late to cancel online: message Sabri on WhatsApp.",
@@ -434,11 +435,19 @@ async function token(){if(SESSION&&Date.now()<SESSION.exp)return SESSION.access;
   refreshing=refreshing||authCall("token?grant_type=refresh_token",{refresh_token:rt}).then(keepSession).catch(e=>{if(e.status>=400&&e.status<500)dropSession()}).finally(()=>{refreshing=null});
   await refreshing;return SESSION&&SESSION.access}
 async function saveMeta(md){try{const tk=await token();if(!tk)return;const j=await authCall("user",{data:md},"PUT",tk);if(SESSION)SESSION.meta=j.user_metadata||md}catch(e){}}
+// Un code tous les 3 minutes maximum par adresse (aussi vérifié côté Supabase)
+const OTP_GAP=180000;
+function otpLast(em){try{return(JSON.parse(localStorage.getItem("sbr_otp")||"{}"))[em.toLowerCase()]||0}catch(e){return 0}}
+function otpMark(em){try{const o=JSON.parse(localStorage.getItem("sbr_otp")||"{}");o[em.toLowerCase()]=Date.now();localStorage.setItem("sbr_otp",JSON.stringify(o))}catch(e){}}
+function otpLeft(em){return Math.max(0,otpLast(em)+OTP_GAP-Date.now())}
+const mmss=ms=>{const x=Math.ceil(ms/1000);return Math.floor(x/60)+":"+String(x%60).padStart(2,"0")};
 async function sendCode(){const A=S.acct,em=A.email.trim();A.err="";A.msg="";
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){A.err=t("badEm");render();return}
+  const left=otpLeft(em);
+  if(left){if(A.step==="email"){A.step="code";A.code="";A.msg=t("aSentTo").replace("{e}",em)}else A.err=t("aWait").replace("{s}",mmss(left));render();return}
   A.busy=true;render();
-  try{await authCall("otp",{email:em,create_user:true});A.step="code";A.code="";A.msg=t("aSentTo").replace("{e}",em)}
-  catch(e){A.err=e.status===429?t("aWait"):t("eNet")}
+  try{await authCall("otp",{email:em,create_user:true});otpMark(em);A.step="code";A.code="";A.msg=t("aSentTo").replace("{e}",em)}
+  catch(e){if(e.status===429){otpMark(em);A.err=t("aWait").replace("{s}","3:00")}else A.err=t("eNet")}
   A.busy=false;render();$("#acode")?.focus()}
 async function verifyCode(){const A=S.acct,code=A.code.replace(/\D/g,"");A.err="";
   if(code.length<6){A.err=t("aBadCode");render();return}
@@ -465,7 +474,7 @@ function renderAccount(app){const A=S.acct;
         <label class="f">${t("aCode")}<input class="in" id="acode" inputmode="numeric" autocomplete="one-time-code" maxlength="10" value="${esc(A.code)}" style="letter-spacing:.3em;font-size:22px;text-align:center"><div class="hint">${t("aCodeH")}</div></label>
         ${A.err?`<div class="alert err" role="alert">${A.err}</div>`:""}
         <button class="btn gold" style="margin-top:0" ${A.busy?"disabled":""}>${A.busy?t("sending"):t("aLogin")}</button>
-        <div style="display:flex;justify-content:space-between;gap:12px"><button type="button" class="link" id="aother">${t("aOther")}</button><button type="button" class="link" id="aresend">${t("aResend")}</button></div></form>`}
+        <div style="display:flex;justify-content:space-between;gap:12px"><button type="button" class="link" id="aother">${t("aOther")}</button><button type="button" class="link" id="aresend" ${otpLeft(A.email.trim())?"disabled":""}>${otpLeft(A.email.trim())?t("aResendIn").replace("{s}",mmss(otpLeft(A.email.trim()))):t("aResend")}</button></div></form>`}
   else{const list=A.list||[],up=list.filter(b=>b.status==="confirmed"&&b.day>=melbToday()).reverse(),past=list.filter(b=>!up.includes(b)).slice(0,10);
     const row=(b,act)=>`<div class="bk"><span><b>${dayLabel(b.day)} · ${hhmm(b.slot.slice(0,5))}</b><span class="muted"><span class="ref">${b.ref}</span> · ${t("st_"+b.status)}</span></span>
       ${act?(canCancel(b)?`<button class="btn red" data-c="${b.id}" data-d="${b.day}" data-t="${b.slot.slice(0,5)}">${t("aCancel")}</button>`:`<a class="btn ghost" target="_blank" rel="noopener" href="${waUrl(t("waChangeMsg").replace("{n}",b.first_name).replace("{d}",dayLabel(b.day)).replace("{t}",hhmm(b.slot.slice(0,5))).replace("{r}",b.ref))}">WhatsApp</a>`):""}</div>`;
@@ -483,6 +492,10 @@ function renderAccount(app){const A=S.acct;
     $("#acode")&&($("#acode").oninput=e=>{A.code=e.target.value;if(A.code.replace(/\D/g,"").length>=6&&e.inputType==="insertFromPaste")verifyCode()});
     $("#aother")&&($("#aother").onclick=()=>{A.step="email";A.err="";A.msg="";render()});
     $("#aresend")&&($("#aresend").onclick=sendCode)}
+  // Compte à rebours du bouton « Renvoyer le code »
+  clearInterval(window._otpTick);
+  if($("#aresend")&&otpLeft(A.email.trim()))window._otpTick=setInterval(()=>{const b=$("#aresend");if(!b){clearInterval(window._otpTick);return}
+    const l=otpLeft(A.email.trim());b.disabled=!!l;b.textContent=l?t("aResendIn").replace("{s}",mmss(l)):t("aResend");if(!l)clearInterval(window._otpTick)},1000)
   if($("#abook"))$("#abook").onclick=()=>go("book");
   if($("#aout"))$("#aout").onclick=()=>{const rt=SESSION&&SESSION.access;if(rt)authCall("logout",null,"POST",rt).catch(()=>{});dropSession();S.acct={step:"email",email:"",code:"",msg:"",err:"",busy:false,list:null};S.form={fn:"",ln:"",ph:"",em:"",c:false};render()};
   app.querySelectorAll("[data-c]").forEach(b=>b.onclick=async()=>{
