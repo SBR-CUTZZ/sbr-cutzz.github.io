@@ -135,8 +135,10 @@ textarea.bubble:focus{outline:none;border-color:var(--green)}
 </div>
 
 <script>
-// Lien d'avis Google (fiche › « Demander des avis ») et CSV publié de la feuille Google qui contient la bannière (A1 = FR, B1 = EN)
-const CONFIG={reviewUrl:"https://g.page/r/CaDiNHmOhoqcEBM/review",bannerCsv:""};
+// Lien d'avis Google (fiche › « Demander des avis ») et projet Supabase (URL + clé publique anon/publishable)
+const CONFIG={reviewUrl:"https://g.page/r/CaDiNHmOhoqcEBM/review",supabaseUrl:"",supabaseKey:""};
+// Supabase renseigné = vraies réservations ; sinon le site reste en démo
+const LIVE=!!(CONFIG.supabaseUrl&&CONFIG.supabaseKey);
 const BIZ={wa:"33761541253",waDisplay:"+33 7 61 54 12 53",addr:"340 St Kilda Road, St Kilda VIC 3182, Australia",insta:"https://instagram.com/sbr_cutzz"};
 const WA_MSG="Salut Sabri ! Je souhaiterais prendre rendez-vous pour une coupe à domicile. Peux-tu me communiquer tes disponibilités ? Merci !";
 const TZ="Australia/Melbourne";
@@ -155,7 +157,13 @@ fr:{demo:"APERÇU DE DÉMONSTRATION — aucune réservation réelle n’est enre
  cTitle:"Ton rendez-vous chez SBR_CUTZZ est confirmé !",hello:"Merci {n} !",addr:"Adresse",ref:"N° de réservation",
  warnT:"ATTENTION :",warn:"sélectionne bien l’adresse située à ST KILDA VIC 3182, et non l’adresse similaire dans le CBD de Melbourne.",
  maps:"OUVRIR GOOGLE MAPS",waze:"OUVRIR WAZE",cal:"AJOUTER À MON CALENDRIER",copy:"Copier les infos du rendez-vous",copied:"Copié !",
- demoNote:"Démo : dans la vraie version, la réservation est enregistrée et l’e-mail de confirmation part si tu as donné ton adresse.",
+ demoNote:"Démo : dans la vraie version, la réservation est enregistrée et Sabri est prévenu.",
+ liveNote:"Sabri a bien reçu ta réservation. Un empêchement ? Préviens-le sur WhatsApp.",waChange:"Prévenir Sabri sur WhatsApp",
+ waChangeMsg:"Salut Sabri, c’est {n}. J’ai réservé le {d} à {t} (réf. {r}) et j’ai un empêchement.",
+ loading:"Chargement des disponibilités…",sending:"ENVOI…",
+ eTaken:"Ce créneau vient d’être pris. Choisis-en un autre.",eLate:"Ce créneau est trop proche : choisis-en un plus tard.",
+ eMany:"Tu as déjà 3 rendez-vous à venir. Contacte Sabri sur WhatsApp pour en ajouter.",eInvalid:"Une information n’est pas valide, vérifie le formulaire.",
+ eNet:"Connexion impossible. Vérifie ta connexion et réessaie.",
  again:"Faire une autre réservation",
  hTitle:"COUPE À DOMICILE",hText:"Tu souhaites te faire couper les cheveux directement chez toi ? Contacte Sabri sur WhatsApp pour convenir ensemble d’un créneau et du lieu du rendez-vous.",
  hCta:"ENVOYER UN MESSAGE WHATSAPP",hPrev:"Message qui sera envoyé à Sabri :",hEdit:"Tu peux modifier ce message avant de l’envoyer.",hReset:"Remettre le message d’origine",hHow:"WhatsApp s’ouvrira avec ton message : il te suffira d’appuyer sur « Envoyer ».",back:"Retour à l’accueil",
@@ -177,7 +185,13 @@ en:{demo:"DEMO PREVIEW — no real booking is saved and no email is sent.",
  cTitle:"Your SBR_CUTZZ appointment is confirmed!",hello:"Thanks {n}!",addr:"Address",ref:"Booking number",
  warnT:"WARNING:",warn:"make sure you select the address in ST KILDA VIC 3182, not the similar address in Melbourne CBD.",
  maps:"OPEN GOOGLE MAPS",waze:"OPEN WAZE",cal:"ADD TO MY CALENDAR",copy:"Copy booking details",copied:"Copied!",
- demoNote:"Demo: in the real version the booking is saved and a confirmation email is sent if you gave your address.",
+ demoNote:"Demo: in the real version the booking is saved and Sabri is notified.",
+ liveNote:"Sabri has received your booking. Can’t make it? Let him know on WhatsApp.",waChange:"Message Sabri on WhatsApp",
+ waChangeMsg:"Hi Sabri, it’s {n}. I booked {d} at {t} (ref. {r}) and can’t make it.",
+ loading:"Loading availability…",sending:"SENDING…",
+ eTaken:"This slot was just taken. Please pick another one.",eLate:"This slot is too soon: please pick a later one.",
+ eMany:"You already have 3 upcoming bookings. Message Sabri on WhatsApp to add more.",eInvalid:"Some details are not valid, please check the form.",
+ eNet:"Can’t connect. Check your connection and try again.",
  again:"Make another booking",
  hTitle:"HOME VISIT",hText:"Want your haircut at home? Message Sabri on WhatsApp to agree on a time and place together.",
  hCta:"SEND A WHATSAPP MESSAGE",hPrev:"Message that will be sent to Sabri:",hEdit:"You can edit this message before sending it.",hReset:"Restore original message",hHow:"WhatsApp will open with your message: just tap “Send”.",back:"Back to home",
@@ -187,7 +201,7 @@ en:{demo:"DEMO PREVIEW — no real booking is saved and no email is sent.",
  iosNot:"Open this site in <b>Safari</b> first to add it.",deskT:"Add SBR_CUTZZ",desk1:"In your browser menu, choose <b>Install</b> or <b>Add to Home screen</b>.",ok:"OK"}
 };
 let L="fr";try{L=localStorage.getItem("sbr_lang")||"fr"}catch(e){}
-const S={view:"home",month:null,date:null,time:null,form:{fn:"",ln:"",ph:"",em:"",c:false},errs:{},booked:{},done:null,waMsg:WA_MSG};
+const S={view:"home",month:null,date:null,time:null,form:{fn:"",ln:"",ph:"",em:"",c:false},errs:{},booked:{},done:null,waMsg:WA_MSG,taken:new Set(),closed:new Set(),availOk:false,sending:false,formErr:""};
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -195,12 +209,13 @@ const t=k=>T[L][k];
 function melbToday(){const p=new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());return p}
 function melbNowMin(){const p=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date()).split(":");return +p[0]*60+ +p[1]}
 function addDays(d,n){const[y,m,x]=d.split("-").map(Number);return new Date(Date.UTC(y,m-1,x+n)).toISOString().slice(0,10)}
-const SLOTS=[];for(let m=600;m+40<=1320;m+=40)SLOTS.push(String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"));
+let SLOT_MIN=40,SLOTS=buildSlots(600,1320,40);
+function buildSlots(o,c,step){const a=[];for(let m=o;m+step<=c;m+=step)a.push(String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"));return a}
 function hhmm(s){const[h,m]=s.split(":").map(Number);return L==="en"?`${h%12||12}:${String(m).padStart(2,"0")} ${h<12?"am":"pm"}`:`${String(h).padStart(2,"0")}h${String(m).padStart(2,"0")}`}
 function dayLabel(d){return new Intl.DateTimeFormat(t("loc"),{weekday:"long",day:"numeric",month:"long",timeZone:"UTC"}).format(new Date(d+"T12:00:00Z"))}
 function seededTaken(d,s){let h=0;for(const c of d+s)h=(h*31+c.charCodeAt(0))>>>0;return h%5===0}
-function slotState(d,s){const[h,m]=s.split(":").map(Number);if(d===melbToday()&&h*60+m<melbNowMin()+30)return false;if(S.booked[d+s])return false;return!seededTaken(d,s)}
-const TODAY=melbToday(),MAX=addDays(TODAY,60);
+function slotState(d,s){const[h,m]=s.split(":").map(Number);if(d===melbToday()&&h*60+m<melbNowMin()+30)return false;if(LIVE)return!S.closed.has(d)&&!S.taken.has(d+" "+s);if(S.booked[d+s])return false;return!seededTaken(d,s)}
+const TODAY=melbToday();let MAX=addDays(TODAY,60);
 
 function setLang(l){L=l;showPromo();try{localStorage.setItem("sbr_lang",l)}catch(e){}document.documentElement.lang=l;
   $("#lfr").setAttribute("aria-pressed",l==="fr");$("#len").setAttribute("aria-pressed",l==="en");render()}
@@ -217,7 +232,7 @@ const mapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${encodeURICom
 const wazeUrl=`https://waze.com/ul?q=${encodeURIComponent(BIZ.addr)}&navigate=yes`;
 
 function render(){
-  $("#demoBanner").textContent=t("demo");
+  $("#demoBanner").textContent=t("demo");$("#demoBanner").hidden=LIVE;
   const v=S.view,app=$("#app");
   if(v==="home"){app.innerHTML=`
     <section class="hero in-anim"><h1>SBR<b>_</b>CUTZZ</h1><p>${t("tag")}</p><small>${t("dur")}</small></section>
@@ -260,7 +275,8 @@ function render(){
       <div class="row2"><a class="btn gold" href="${mapsUrl}" target="_blank" rel="noopener">${t("maps")}</a><a class="btn waze" href="${wazeUrl}" target="_blank" rel="noopener">${t("waze")}</a></div>
       <a class="btn ghost" style="margin-top:0" target="_blank" rel="noopener" href="${gcal(d)}">${t("cal")}</a>
       <button class="btn ghost" style="margin-top:0" id="copy">${t("copy")}</button>
-      <p class="muted center" style="margin:0">${t("demoNote")}</p>
+      <p class="muted center" style="margin:0">${LIVE?t("liveNote"):t("demoNote")}</p>
+      ${LIVE?`<a class="btn outline-g" style="margin-top:0" target="_blank" rel="noopener" href="${waUrl(t("waChangeMsg").replace("{n}",d.fn).replace("{d}",dayLabel(d.date)).replace("{t}",hhmm(d.time)).replace("{r}",d.ref))}">${t("waChange")}</a>`:""}
       <button class="btn gold" id="again" style="margin-top:0">${t("again")}</button>
     </div>`;
     $("#copy").onclick=async e=>{const txt=`SBR_CUTZZ — ${dayLabel(d.date)} ${hhmm(d.time)}\n340 St Kilda Road, St Kilda VIC 3182\n⚠️ ST KILDA VIC 3182\n${d.ref}`;
@@ -275,9 +291,10 @@ function render(){
   let cells=wds.map(w=>`<div class="wd">${w}</div>`).join("")+"<div></div>".repeat(fw);
   for(let i=0;i<dim;i++){const d=addDays(first,i),dis=d<TODAY||d>MAX;cells+=`<button class="day${d===S.date?" sel":""}" data-d="${d}" ${dis?"disabled":""}>${i+1}</button>`}
   let slotsHtml="";
+  if(LIVE&&!S.availOk&&!S.availLoading)loadAvail().then(()=>{if(S.view==="book")render()});
   if(S.date){const st=SLOTS.map(s=>[s,slotState(S.date,s)]);const any=st.some(x=>x[1]);
     slotsHtml=`<section class="card in-anim" id="slotsSec"><h2 class="step"><span>2</span>${t("s2")}</h2><p class="muted" style="margin:-8px 0 14px;text-transform:capitalize">${dayLabel(S.date)}</p>
-    ${any?`<div class="slots">${st.map(([s,a])=>`<button class="slot${s===S.time?" sel":""}" data-t="${s}" ${a?"":"disabled"}>${hhmm(s)}</button>`).join("")}</div><div class="live"><i></i>${t("live")}</div>`:`<p class="muted">${t("noSlots")}</p>`}</section>`}
+    ${LIVE&&!S.availOk?`<p class="muted">${t("loading")}</p>`:any?`<div class="slots">${st.map(([s,a])=>`<button class="slot${s===S.time?" sel":""}" data-t="${s}" ${a?"":"disabled"}>${hhmm(s)}</button>`).join("")}</div><div class="live"><i></i>${t("live")}</div>`:`<p class="muted">${t("noSlots")}</p>`}</section>`}
   let formHtml="";
   if(S.date&&S.time){const f=S.form,e=S.errs;formHtml=`<section class="card in-anim" id="formSec"><h2 class="step"><span>3</span>${t("s3")}</h2>
     <form id="bf" class="stack" novalidate>
@@ -288,7 +305,8 @@ function render(){
       <label class="consent"><input type="checkbox" id="c" ${f.c?"checked":""}><span>${t("consent")}</span></label>${e.c?`<div class="errtxt">${e.c}</div>`:""}
       <div class="sum"><div class="b">SBR<b>_</b>CUTZZ</div><dl><dt>${t("date")}</dt><dd>${dayLabel(S.date)}</dd><dt>${t("time")}</dt><dd>${hhmm(S.time)}</dd><dt>${t("place")}</dt><dd>${t("place2")}</dd></dl>
       <button type="button" class="link" id="chg" style="margin-top:8px">${t("change")}</button></div>
-      <button class="btn gold" style="margin-top:0;font-size:14px;padding:17px">${t("confirm")}</button>
+      ${S.formErr?`<div class="alert err" role="alert">${S.formErr}</div>`:""}
+      <button class="btn gold" style="margin-top:0;font-size:14px;padding:17px" ${S.sending?"disabled":""}>${S.sending?t("sending"):t("confirm")}</button>
     </form></section>`}
   app.innerHTML=`<h1 class="page">${t("bTitle")}</h1><p class="sub">${t("bSub")}</p>
     <div class="stack"><section class="card"><h2 class="step"><span>1</span>${t("s1")}</h2>
@@ -308,13 +326,14 @@ function render(){
       const digits=f.ph.replace(/\D/g,"");if(!f.ph.trim())er.ph=t("req");else if(!/^\+?[\d\s().-]+$/.test(f.ph.trim())||digits.length<8||digits.length>15)er.ph=t("badPh");
       if(f.em.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.em.trim()))er.em=t("badEm");
       if(!f.c)er.c=t("badC");
-      S.errs=er;if(Object.keys(er).length){render();return}
+      S.errs=er;S.formErr="";if(Object.keys(er).length){render();return}
+      if(LIVE){submitLive();return}
       S.booked[S.date+S.time]=1;
       const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="SBR-";for(let i=0;i<6;i++)r+=a[Math.floor(Math.random()*a.length)];
       S.done={fn:f.fn.trim(),date:S.date,time:S.time,ref:r};S.form={fn:"",ln:"",ph:"",em:"",c:false};S.time=null;go("done")}}
 }
 function gcal(d){const[h,m]=d.time.split(":").map(Number);const pad=n=>String(n).padStart(2,"0");
-  const st=d.date.replace(/-/g,"")+"T"+pad(h)+pad(m)+"00";const em=h*60+m+40;const en=d.date.replace(/-/g,"")+"T"+pad(Math.floor(em/60))+pad(em%60)+"00";
+  const st=d.date.replace(/-/g,"")+"T"+pad(h)+pad(m)+"00";const em=h*60+m+SLOT_MIN;const en=d.date.replace(/-/g,"")+"T"+pad(Math.floor(em/60))+pad(em%60)+"00";
   const p=new URLSearchParams({action:"TEMPLATE",text:"SBR_CUTZZ (Sabri)",dates:st+"/"+en,ctz:TZ,location:BIZ.addr,details:"340 St Kilda Road, St Kilda VIC 3182 — "+d.ref});
   return "https://calendar.google.com/calendar/render?"+p}
 // Écran d'accueil : Android/Chrome propose l'installation, iPhone affiche les étapes Safari
@@ -333,14 +352,40 @@ function doInstall(){
   sh.hidden=false;$("#sheetOk").onclick=()=>sh.hidden=true}
 if(onSite&&"serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 
-// Bannière promo : première ligne de la feuille Google publiée en CSV
+// Supabase : appels REST directs (pas de bibliothèque à charger)
+async function api(path,body){
+  const h={apikey:CONFIG.supabaseKey,"Content-Type":"application/json"};
+  if(CONFIG.supabaseKey.startsWith("eyJ"))h.Authorization="Bearer "+CONFIG.supabaseKey;
+  const r=await fetch(CONFIG.supabaseUrl.replace(/\/$/,"")+"/rest/v1/"+path,{method:body?"POST":"GET",headers:h,body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>null);
+  if(!r.ok)throw new Error((j&&j.message)||"http_"+r.status);
+  return j}
+async function loadAvail(){S.availLoading=true;
+  try{const rows=await api("rpc/get_unavailable",{p_from:TODAY,p_to:MAX});
+    S.taken=new Set();S.closed=new Set();
+    for(const r of rows||[]){if(r.slot)S.taken.add(r.day+" "+r.slot.slice(0,5));else S.closed.add(r.day)}
+    S.availOk=true}catch(e){}
+  S.availLoading=false}
+async function submitLive(){const f=S.form;S.sending=true;render();
+  try{const ref=await api("rpc/book",{p_day:S.date,p_slot:S.time,p_first_name:f.fn.trim(),p_last_name:f.ln.trim(),p_phone:f.ph.trim(),p_email:f.em.trim()||null,p_lang:L});
+    S.sending=false;S.taken.add(S.date+" "+S.time);
+    S.done={fn:f.fn.trim(),date:S.date,time:S.time,ref};S.form={fn:"",ln:"",ph:"",em:"",c:false};S.time=null;go("done")}
+  catch(e){S.sending=false;const m=String(e.message||"");
+    S.formErr=/slot_taken/.test(m)?t("eTaken"):/too_late|invalid_day|invalid_slot/.test(m)?t("eLate"):/too_many/.test(m)?t("eMany"):/invalid_details/.test(m)?t("eInvalid"):t("eNet");
+    if(/slot_taken|too_late|invalid_day|invalid_slot/.test(m)){S.time=null;await loadAvail()}
+    render();$(S.time?"#formSec":"#slotsSec")?.scrollIntoView({behavior:"smooth",block:"start"});
+    if(!S.time){const box=$("#slotsSec");if(box&&S.formErr)box.insertAdjacentHTML("afterbegin",`<div class="alert err" role="alert" style="margin-bottom:14px">${S.formErr}</div>`);S.formErr=""}}}
+// Les créneaux pris par d'autres clients se mettent à jour toutes les minutes
+setInterval(()=>{if(LIVE&&S.view==="book"&&!S.sending)loadAvail().then(()=>{const a=document.activeElement;if(S.view==="book"&&!(a&&/INPUT|TEXTAREA/.test(a.tagName)))render()})},60000);
+
+// Bannière promo et horaires : réglés depuis l'espace admin
 let promo=null;
-function csvRow(txt){const out=[];let cur="",q=false;for(let i=0;i<txt.length;i++){const c=txt[i];
-  if(q){if(c==='"'&&txt[i+1]==='"'){cur+='"';i++}else if(c==='"')q=false;else cur+=c}
-  else if(c==='"')q=true;else if(c===",")(out.push(cur),cur="");else if(c==="\n"||c==="\r")break;else cur+=c}
-  out.push(cur);return out.map(x=>x.trim())}
 function showPromo(){const el=$("#promo");const txt=promo&&(L==="en"&&promo[1]?promo[1]:promo[0]);el.textContent=txt||"";el.classList.toggle("on",!!txt)}
-if(CONFIG.bannerCsv)fetch(CONFIG.bannerCsv+(CONFIG.bannerCsv.includes("?")?"&":"?")+"t="+Date.now()).then(r=>r.ok?r.text():"").then(x=>{promo=csvRow(x);showPromo()}).catch(()=>{});
+const toMin=x=>{const[h,m]=String(x).split(":").map(Number);return h*60+m};
+if(LIVE)api("settings?select=*&id=eq.1").then(r=>{const c=r&&r[0];if(!c)return;
+  promo=[c.banner_fr||"",c.banner_en||""];showPromo();
+  SLOT_MIN=c.slot_minutes||40;SLOTS=buildSlots(toMin(c.open_time),toMin(c.close_time),SLOT_MIN);MAX=addDays(TODAY,c.max_days_ahead||60);
+  if(S.view!=="home")render()}).catch(()=>{});
 setLang(L);
 </script>
 
