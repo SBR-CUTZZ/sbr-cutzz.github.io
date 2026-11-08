@@ -212,7 +212,7 @@ fr:{demo:"APERÇU DE DÉMONSTRATION — aucune réservation réelle n’est enre
  demoNote:"Démo : dans la vraie version, la réservation est enregistrée et Sabri est prévenu.",
  liveNote:"Sabri a bien reçu ta réservation. Un empêchement ? Préviens-le sur WhatsApp.",waChange:"Prévenir Sabri sur WhatsApp",
  waChangeMsg:"Salut Sabri, c’est {n}. J’ai réservé le {d} à {t} (réf. {r}) et j’ai un empêchement.",
- loading:"Chargement des disponibilités…",sending:"ENVOI…",
+ loading:"Chargement des disponibilités…",eDown:"La réservation en ligne ne répond pas pour le moment. Écris directement à Sabri sur WhatsApp, il te trouve un créneau.",waDown:"RÉSERVER SUR WHATSAPP",waDownMsg:"Salut Sabri, je voudrais un rendez-vous le {d}. Tu as un créneau ?",retry:"Réessayer",sending:"ENVOI…",
  eTaken:"Ce créneau vient d’être pris. Choisis-en un autre.",eLate:"Ce créneau est trop proche : choisis-en un plus tard.",
  eMany:"Tu as déjà 3 rendez-vous à venir. Contacte Sabri sur WhatsApp pour en ajouter.",eInvalid:"Une information n’est pas valide, vérifie le formulaire.",
  eNet:"Connexion impossible. Vérifie ta connexion et réessaie.",
@@ -250,7 +250,7 @@ en:{demo:"DEMO PREVIEW — no real booking is saved and no email is sent.",
  demoNote:"Demo: in the real version the booking is saved and Sabri is notified.",
  liveNote:"Sabri has received your booking. Can’t make it? Let him know on WhatsApp.",waChange:"Message Sabri on WhatsApp",
  waChangeMsg:"Hi Sabri, it’s {n}. I booked {d} at {t} (ref. {r}) and can’t make it.",
- loading:"Loading availability…",sending:"SENDING…",
+ loading:"Loading availability…",eDown:"Online booking isn't responding right now. Message Sabri on WhatsApp and he'll find you a slot.",waDown:"BOOK ON WHATSAPP",waDownMsg:"Hi Sabri, I'd like an appointment on {d}. Do you have a slot?",retry:"Try again",sending:"SENDING…",
  eTaken:"This slot was just taken. Please pick another one.",eLate:"This slot is too soon: please pick a later one.",
  eMany:"You already have 3 upcoming bookings. Message Sabri on WhatsApp to add more.",eInvalid:"Some details are not valid, please check the form.",
  eNet:"Can’t connect. Check your connection and try again.",
@@ -364,10 +364,10 @@ function render(){
   let cells=wds.map(w=>`<div class="wd">${w}</div>`).join("")+"<div></div>".repeat(fw);
   for(let i=0;i<dim;i++){const d=addDays(first,i),dis=d<TODAY||d>MAX;cells+=`<button class="day${d===S.date?" sel":""}" data-d="${d}" ${dis?"disabled":""}>${i+1}</button>`}
   let slotsHtml="";
-  if(LIVE&&!S.availOk&&!S.availLoading)loadAvail().then(()=>{if(S.view==="book")render()});
+  if(LIVE&&!S.availOk&&!S.availLoading&&!S.availErr)loadAvail().then(()=>{if(S.view==="book")render()});
   if(S.date){const st=SLOTS.map(s=>[s,slotState(S.date,s)]);const any=st.some(x=>x[1]);
     slotsHtml=`<section class="card in-anim" id="slotsSec"><h2 class="step"><span>2</span>${t("s2")}</h2><p class="muted" style="margin:-8px 0 14px;text-transform:capitalize">${dayLabel(S.date)}</p>
-    ${LIVE&&!S.availOk?`<p class="muted">${t("loading")}</p>`:any?`<div class="slots">${st.map(([s,a])=>`<button class="slot${s===S.time?" sel":""}" data-t="${s}" ${a?"":"disabled"}>${hhmm(s)}</button>`).join("")}</div><div class="live"><i></i>${t("live")}</div>`:`<p class="muted">${t("noSlots")}</p>`}</section>`}
+    ${LIVE&&!S.availOk&&S.availErr?`<div class="alert err" role="alert">${t("eDown")}</div><a class="btn wa" target="_blank" rel="noopener" href="${waUrl(t("waDownMsg").replace("{d}",dayLabel(S.date)))}">${t("waDown")}</a><button class="btn ghost" id="retry">${t("retry")}</button>`:LIVE&&!S.availOk?`<p class="muted">${t("loading")}</p>`:any?`<div class="slots">${st.map(([s,a])=>`<button class="slot${s===S.time?" sel":""}" data-t="${s}" ${a?"":"disabled"}>${hhmm(s)}</button>`).join("")}</div><div class="live"><i></i>${t("live")}</div>`:`<p class="muted">${t("noSlots")}</p>`}</section>`}
   let formHtml="";
   if(S.date&&S.time){const f=S.form,e=S.errs;
     if(SESSION&&!f.fn&&!f.ln&&!f.ph){const md=SESSION.meta||{};f.fn=md.fn||"";f.ln=md.ln||"";f.ph=md.ph||""}formHtml=`<section class="card in-anim" id="formSec"><h2 class="step"><span>3</span>${t("s3")}</h2>
@@ -390,6 +390,7 @@ function render(){
   $("#pm").onclick=()=>{S.month=new Date(Date.UTC(y,m-2,1)).toISOString().slice(0,7);render()};
   $("#nm").onclick=()=>{S.month=new Date(Date.UTC(y,m,1)).toISOString().slice(0,7);render()};
   app.querySelectorAll(".day").forEach(b=>b.onclick=()=>{S.date=b.dataset.d;S.time=null;render();$("#slotsSec")?.scrollIntoView({behavior:"smooth",block:"start"})});
+  if($("#retry"))$("#retry").onclick=()=>{S.availErr=false;render()};
   app.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{S.time=b.dataset.t;render();$("#formSec")?.scrollIntoView({behavior:"smooth",block:"start"})});
   const bf=$("#bf");if(bf){
     ["fn","ln","ph","em"].forEach(k=>$("#"+k).oninput=e=>S.form[k]=e.target.value);
@@ -436,7 +437,7 @@ async function api(path,body){
   const h={apikey:CONFIG.supabaseKey,"Content-Type":"application/json"};
   if(CONFIG.supabaseKey.startsWith("eyJ"))h.Authorization="Bearer "+CONFIG.supabaseKey;
   const tk=await token();if(tk)h.Authorization="Bearer "+tk;
-  const r=await fetch(CONFIG.supabaseUrl.replace(/\/$/,"")+"/rest/v1/"+path,{method:body?"POST":"GET",headers:h,body:body?JSON.stringify(body):undefined});
+  const r=await fetch(CONFIG.supabaseUrl.replace(/\/$/,"")+"/rest/v1/"+path,{method:body?"POST":"GET",headers:h,signal:AbortSignal.timeout?AbortSignal.timeout(12000):undefined,body:body?JSON.stringify(body):undefined});
   const j=await r.json().catch(()=>null);
   if(!r.ok)throw new Error((j&&j.message)||"http_"+r.status);
   return j}
@@ -444,7 +445,7 @@ async function loadAvail(){S.availLoading=true;
   try{const rows=await api("rpc/get_unavailable",{p_from:TODAY,p_to:MAX});
     S.taken=new Set();S.closed=new Set();
     for(const r of rows||[]){if(r.slot)S.taken.add(r.day+" "+r.slot.slice(0,5));else S.closed.add(r.day)}
-    S.availOk=true}catch(e){}
+    S.availOk=true;S.availErr=false}catch(e){S.availErr=true}
   S.availLoading=false}
 async function submitLive(){const f=S.form;S.sending=true;render();
   try{const ref=await api("rpc/book",{p_day:S.date,p_slot:S.time,p_first_name:f.fn.trim(),p_last_name:f.ln.trim(),p_phone:f.ph.trim(),p_email:f.em.trim()||null,p_lang:L,...(LIVE&&svSel()?{p_service:svSel().id}:{})});
