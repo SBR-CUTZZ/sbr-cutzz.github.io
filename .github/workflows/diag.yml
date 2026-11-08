@@ -7,9 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          U=https://leuxyvrvphfbxsczobzd.supabase.co; K=sb_publishable_tnCSbUJwiwzxvl2lPwGPCA_QSq9SVbX
-          echo "== gallery"; curl -sS -w "\n%{http_code}\n" "$U/rest/v1/gallery?select=id,path,caption,sort&order=sort.asc,created_at.desc" -H "apikey: $K"
-          echo "== services"; curl -sS -w "\n%{http_code}\n" "$U/rest/v1/services?select=name_fr,price,active" -H "apikey: $K"
-          P=$(curl -sS "$U/rest/v1/gallery?select=path&limit=1" -H "apikey: $K" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['path'] if d else '')")
-          [ -n "$P" ] && curl -sS -o /dev/null -w "img %{http_code} %{content_type} %{size_download}\n" "$U/storage/v1/object/public/gallery/$P"
-          echo "== site"; curl -sS https://sbr-cutzz.github.io/ | grep -c "storage/v1/object/public/gallery" || true
+          google-chrome --headless=new --no-sandbox --window-size=390,844 --virtual-time-budget=10000 --dump-dom "https://sbr-cutzz.github.io/?x=$RANDOM" > dom.html 2>/dev/null || true
+          echo "gph: $(grep -o 'class="gph"' dom.html | wc -l)  prices: $(grep -o 'class="card prices' dom.html | wc -l)"
+          grep -o '<section class="gal[^>]*>' dom.html | head -2
