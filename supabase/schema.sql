@@ -114,6 +114,17 @@ grant select, insert, update, delete on public.bookings, public.blocks to authen
 grant select on public.services to anon, authenticated;
 grant insert, update, delete on public.services to authenticated;
 
+-- Signe de vie quotidien (appelé par GitHub Actions) : une vraie écriture pour que Supabase ne mette pas le projet en pause
+create table if not exists private.heartbeat (id int primary key default 1 check (id = 1), at timestamptz not null default now(), n bigint not null default 0);
+create or replace function public.keepalive() returns timestamptz
+language sql volatile security definer set search_path = '' as $$
+  insert into private.heartbeat (id, at, n) values (1, now(), 1)
+  on conflict (id) do update set at = now(), n = private.heartbeat.n + 1
+  returning at
+$$;
+revoke all on function public.keepalive() from public;
+grant execute on function public.keepalive() to anon, authenticated;
+
 -- Date et heure actuelles à Melbourne
 create or replace function public.melb_now() returns timestamp
 language sql stable set search_path = '' as $$ select now() at time zone 'Australia/Melbourne' $$;

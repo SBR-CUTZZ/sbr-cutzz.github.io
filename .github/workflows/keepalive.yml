@@ -13,8 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -fsS --retry 3 --retry-delay 20 "https://leuxyvrvphfbxsczobzd.supabase.co/rest/v1/settings?select=id" \
-            -H "apikey: sb_publishable_tnCSbUJwiwzxvl2lPwGPCA_QSq9SVbX" > /dev/null
+          U=https://leuxyvrvphfbxsczobzd.supabase.co; K=sb_publishable_tnCSbUJwiwzxvl2lPwGPCA_QSq9SVbX
+          # Lecture puis écriture (fonction keepalive) ; l'écriture est ignorée tant que schema.sql n'a pas été relancé
+          curl -fsS --retry 3 --retry-delay 20 "$U/rest/v1/settings?select=id" -H "apikey: $K" > /dev/null
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$U/rest/v1/rpc/keepalive" -H "apikey: $K" -H "Content-Type: application/json" -d '{}')
+          echo "keepalive: $code"; [ "$code" = 200 ] || [ "$code" = 404 ]
       - if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
