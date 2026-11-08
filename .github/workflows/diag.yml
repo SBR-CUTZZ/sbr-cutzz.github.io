@@ -1,5 +1,7 @@
 name: diag
-on: workflow_dispatch
+on:
+  push:
+    branches: [diag-gallery]
 jobs:
   d:
     runs-on: ubuntu-latest
